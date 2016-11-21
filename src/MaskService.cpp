@@ -15,13 +15,14 @@ int is_bit_set(uint8_t mask, const uint8_t bit) {
 	return (mask & bit) == bit;
 }
 
-void MaskService::get_masked_values(IGlucoseLevels *masked, IGlucoseLevels &mEnumeratedLevels, uint8_t mask) {
-	int index, bits[8];
-	size_t i = 0, bit, size;
-	TGlucoseLevel *levels;
-	std::vector<TGlucoseLevel> glucose_levels;
-	mEnumeratedLevels.GetLevels(&levels);
-	mEnumeratedLevels.GetLevelsCount(&size);
+MaskService::MaskService(IGlucoseLevels *mEnumeratedLevels) {
+	mEnumeratedLevels->GetLevels(&levels);
+	mEnumeratedLevels->GetLevelsCount(&size);
+}
+
+void MaskService::get_masked_values(std::vector<TGlucoseLevel *> *glucose_levels, uint8_t mask) {
+	int bits[8];
+	size_t i = 0, bit;
 	
 	bits[0] = is_bit_set(mask, bit1);
 	bits[1] = is_bit_set(mask, bit2);
@@ -35,19 +36,14 @@ void MaskService::get_masked_values(IGlucoseLevels *masked, IGlucoseLevels &mEnu
 	while (i < size) {
 		for (bit = 0; bit < 8; bit++) {
 			if (bits[bit] && i < size) {
-				glucose_levels.push_back(levels[i]);
+				glucose_levels->push_back(&levels[i]);
 			}
-			else { return; } // all values have been masked
 			i++;
+			if (i >= size) { return; } // all values have been masked
 		}
 	}
-
-	masked->SetLevelsCount(glucose_levels.size());
-	TGlucoseLevel *lvl;
-	masked->GetLevels(&lvl);
-	memcpy(lvl, glucose_levels.data(), glucose_levels.size() * sizeof TGlucoseLevel);
 }
 
-void MaskService::get_inverse_masked_values(IGlucoseLevels *masked, IGlucoseLevels &mEnumeratedLevels, uint8_t mask) {
-	get_masked_values(masked, mEnumeratedLevels, ~mask);
+void MaskService::get_inverse_masked_values(std::vector<TGlucoseLevel *> *glucose_levels, uint8_t mask) {
+	get_masked_values(glucose_levels, ~mask);
 }

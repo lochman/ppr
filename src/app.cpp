@@ -32,14 +32,8 @@ void load_segments(std::vector<std::shared_ptr<CGlucoseLevels>> &segments) {
 
 int main() {
 	std::vector<std::shared_ptr<CGlucoseLevels>> segments;
-	IGlucoseLevels *masked = new CGlucoseLevels;
-	MaskService mask_service;
-	uint8_t mask = 250;
 	load_segments(segments);
 
-	fprintf(stdout, "Creating mask\n");
-	mask_service.get_masked_values(masked, *segments[0], mask);
-	fprintf(stdout, "Mask ready\n");
 	CCommonApprox *ca = new CubicApprox(segments[0].get());
 	TApproximationParams params;
 	floattype *levels;
