@@ -10,7 +10,7 @@
 #pragma warning( push )
 #pragma warning( disable : 4250 ) // C4250 - 'class1' : inherits 'class2::member' via dominance
 
-class CGlucoseLevels : public IGlucoseLevels, public virtual CReferenced{
+class CGlucoseLevels : public IGlucoseLevels, public virtual CReferenced {
 protected:
 	std::vector<TGlucoseLevel> mLevels;
 public:	

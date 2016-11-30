@@ -1,25 +1,53 @@
 #include "CubicApprox.h"
 #include "../../MaskService.h"
-#include <vector>
 #include <math.h>
+#include <iterator>
+#include <algorithm>
 
-HRESULT approx(std::vector<TGlucoseLevel *> levels, std::vector<floattype> a, std::vector<floattype> b,
-			   std::vector<floattype> c, std::vector<floattype> d) {
-	size_t size = levels.size();
-	std::vector<floattype> h(size), l(size), u(size), z(size);
-	a.resize(size);
+HRESULT CubicApprox::Approximate(TApproximationParams *params) {
+	TGlucoseLevel *levels;
+	size_t size;
+	mEnumeratedLevels->GetLevels(&levels);
+	mEnumeratedLevels->GetLevelsCount(&size);
+	//printf("Starting Cubic with size %zd\n", size); n = size-1
+	
+	std::vector<floattype> h(size), a(size), l(size), u(size), z(size);
+	
 	b.resize(size);
 	c.resize(size);
 	d.resize(size);
+	
+	l[0] = 1.0;
+	u[0] = 0.0;
+	z[0] = 0.0;
+	l[size - 1] = 1.0;
+	z[size - 1] = 0.0;
+	c[size - 1] = 0.0;
+	h[0] = levels[1].datetime - levels[0].datetime;
 
+	for (size_t i = 1; i < size - 1; i++) {
+		h[i] = levels[i + 1].datetime - levels[i].datetime;
+		a[i] = (3 / h[i]) * (levels[i + 1].level - levels[i].level) -
+			   (3 / h[i - 1]) * (levels[i].level - levels[i - 1].level);
+		l[i] = 2 * (levels[i + 1].datetime - levels[i - 1].datetime) - h[i - 1] * u[i - 1];
+		u[i] = h[i] / l[i];
+		z[i] = (a[i] - h[i - 1] * z[i - 1]) / l[i];
+	}
+
+	for (int i = size - 2; i > -1; i--) {
+		c[i] = z[i] - u[i] * c[i + 1];
+		b[i] = (levels[i + 1].level - levels[i].level) / h[i] - h[i] * ((c[i + 1] + 2 * c[i]) / 3);
+		d[i] = (c[i + 1] - c[i]) / (3 * h[i]);
+	}
+	/*
 	for (size_t i = 0; i < size - 1; i++) {
-		h[i] = levels[i + 1]->datetime - levels[i]->datetime;
+		h[i] = levels[i + 1].datetime - levels[i].datetime;
 	}
 
 	float first, second;
 	for (size_t i = 1; i < size - 1; i++) {
-		first = 3 * (levels[i + 1]->level - levels[i]->level) / h[i];
-		second = 3 * (levels[i]->level - levels[i - 1]->level) / h[i - 1];
+		first = 3 * (levels[i + 1].level - levels[i].level) / h[i];
+		second = 3 * (levels[i].level - levels[i - 1].level) / h[i - 1];
 		a[i] = first - second;
 	}
 
@@ -28,7 +56,7 @@ HRESULT approx(std::vector<TGlucoseLevel *> levels, std::vector<floattype> a, st
 	z[0] = 0.0;
 
 	for (size_t i = 1; i < size - 1; i++) {
-		l[i] = 2 * (levels[i + 1]->datetime - levels[i - 1]->datetime) - h[i - 1] * u[i - 1];
+		l[i] = 2 * (levels[i + 1].datetime - levels[i - 1].datetime) - h[i - 1] * u[i - 1];
 		u[i] = h[i] / l[i];
 		z[i] = (a[i] - h[i - 1] * z[i - 1]) / l[i];
 	}
@@ -40,63 +68,36 @@ HRESULT approx(std::vector<TGlucoseLevel *> levels, std::vector<floattype> a, st
 	for (int i = size - 2; i >= 0; i--) {
 		//fprintf(stdout, "%d\n", i);
 		c[i] = z[i] - u[i] * c[i + 1];
-		b[i] = (levels[i + 1]->level - levels[i]->level) / (h[i] - h[i] * (c[i + 1] + 2 * c[i]) / 3);
-		d[i] = (c[i + 1] - c[i]) / 3 * h[i];
-	}
-	return S_OK;
-}
-
-HRESULT CubicApprox::Approximate(TApproximationParams *params) {
-	MaskService mask_service(mEnumeratedLevels);
-	for (int i = 255; i > 0; i--) {
-		printf("Getting mask %d\n", i);
-		mask_service.get_masked_values(&masks[i], i);
-		printf("Counting mask %d, %zd\n", i, masks[i].size());
-		approx(masks[i], a[i], b[i], c[i], d[i]);
-	}	
-	
-	/*
-	floattype x;
-	
-	for (size_t i = 0; i < size - 1; i++) {
-		x = 0.002;
-		printf("%f %f %f\n", levels[i].level, levels[i].level + b[i] * x + c[i] * pow(x, 2) + d[i] * pow(x, 3), levels[i + 1].level);
+		b[i] = (levels[i + 1].level - levels[i].level) / h[i] - h[i] * (c[i + 1] + 2 * c[i]) / 3);
+		d[i] = (c[i + 1] - c[i]) / (3 * h[i]);
 	}
 	*/
 	return S_OK;
-};
-
-HRESULT get_time_interval(TGlucoseLevel *levels, size_t size, floattype time, int *index) {
-	floattype diff, last = std::abs(levels[0].datetime - time);
-	for (size_t i = 0; i < size - 1; i++) {
-		diff = std::abs(levels[i].datetime - time);
-		if (diff > last) {
-			*index = i;
-			return S_OK;
-		}
-		last = diff;
-	}
-	return S_FALSE;
 }
 
 HRESULT CubicApprox::GetLevels(floattype desiredtime, floattype stepping, size_t count,
 	floattype *levels, size_t *filled, size_t derivationorder) {
-	/*
 	TGlucoseLevel *gl;
 	size_t size;
 	mEnumeratedLevels->GetLevelsCount(&size);
 	mEnumeratedLevels->GetLevels(&gl);
 	floattype time = desiredtime, x;
 	int i;
-	printf("%zd %zd %zd %zd %zd\n", size, a.size(), b.size(), c.size(), d.size());
 	for (size_t j = 0; j < count; j++) {
-		if (get_time_interval(gl, size, time, &i) == S_FALSE) { continue; }
+		if (get_time_interval(gl, size, time, &i) == S_FALSE) { levels[j] = 0.0; continue; }
 		x = time - gl[i].datetime;
-		levels[j] = gl[i].level + b[i] * x + c[i] * pow(x, 2) + d[i] * pow(x, 3);
-		printf("%f %f\n", gl[i].level, levels[j]);
+		switch (derivationorder) {
+		case 1:
+			levels[j] = b[i] + 2 * c[i] * x + 3 * d[i] * pow(x, 2);
+			break;
+		case 2:
+			levels[j] = 2 * c[i] + 6 * d[i] * x;
+			break;
+		default:
+			levels[j] = gl[i].level + b[i] * x + c[i] * pow(x, 2) + d[i] * pow(x, 3);
+		}
 		time += stepping;
 		(*filled)++;
 	}
-	*/
 	return S_OK;
-};
+}

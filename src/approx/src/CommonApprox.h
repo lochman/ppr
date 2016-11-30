@@ -19,6 +19,7 @@ public:
 	CCommonApprox(IGlucoseLevels *levels);
 	virtual ~CCommonApprox();
 	//dctor has to be virtual, even if it is empty, due to the inheritance by dominance	
+	HRESULT get_time_interval(TGlucoseLevel *levels, size_t size, floattype time, int *index);
 };
 
 #pragma warning( pop )
