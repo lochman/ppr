@@ -65,14 +65,14 @@ void Statistics::get_errors(TGlucoseLevel *levels, int &mask, CCommonApprox *app
 		rel_errors.push_back(abs_errors[i] / levels[i].level);
 	}
 	//printf("errors:\n");
-	print_graph(levels, mask, approx_lvls);
+	//print_graph(levels, mask, approx_lvls);
 	/*
 	print_stats(abs_errors);
 	print_stats(rel_errors);
 	*/
 }
 
-Statistics::Statistics(MaskService *mask_service, int &mask, CCommonApprox *approx) {
+Statistics::Statistics(const MaskService *mask_service, int &mask, CCommonApprox *approx) {
 	IGlucoseLevels *glevels;
 	TGlucoseLevel *levels;
 	mask_service->get_levels(&ref_values);

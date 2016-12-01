@@ -15,25 +15,25 @@ int is_bit_set(uint8_t mask, const uint8_t bit) {
 	return (mask & bit) == bit;
 }
 
-void fill_lvl_with_values(CGlucoseLevels &level, std::vector<TGlucoseLevel> &gl_levels) {
+void fill_lvl_with_values(IGlucoseLevels *level, std::vector<TGlucoseLevel> &gl_levels) {
 	TGlucoseLevel *lvl;
-	level.SetLevelsCount(gl_levels.size());
-	level.GetLevels(&lvl);
+	level->AddRef();
+	level->SetLevelsCount(gl_levels.size());
+	level->GetLevels(&lvl);
 	memcpy(lvl, gl_levels.data(), gl_levels.size() * sizeof TGlucoseLevel);
 }
 
 MaskService::MaskService(TGlucoseLevel *levels, size_t const &size) : levels(levels), size(size) {
 	std::vector<TGlucoseLevel> gl_levels;
-
+	
 	for (int i = 255; i > 0; i--) {
 		get_masked_values(gl_levels, i);
-		fill_lvl_with_values(masks[i - 1], gl_levels);
-		masks[i - 1].AddRef();
+		fill_lvl_with_values(&masks[i - 1], gl_levels);
 		gl_levels.clear();
 	}
 }
 
-void MaskService::get_masked_values(std::vector<TGlucoseLevel> &glucose_levels, uint8_t mask) {
+void MaskService::get_masked_values(std::vector<TGlucoseLevel> &glucose_levels, uint8_t mask) const {
 	int bits[8];
 	size_t i = 1, bit;
 	
@@ -64,16 +64,33 @@ void MaskService::get_masked_values(std::vector<TGlucoseLevel> &glucose_levels, 
 
 void MaskService::get_mask(IGlucoseLevels **levels, uint8_t mask) {
 	*levels = &masks[mask - 1];
+	/*
+	std::vector<TGlucoseLevel> gl_levels;
+	IGlucoseLevels *level = new CGlucoseLevels();
+	get_masked_values(gl_levels, mask);
+	fill_lvl_with_values(level, gl_levels);
+	*levels = level;
+	*/
+	/*
+	size_t m;
+	level->GetLevelsCount(&m);
+	TGlucoseLevel *lvl;
+	level->GetLevels(&lvl);
+
+	printf("getting mask %d size is %zd\n", mask, m);
+	printf("last is %f\n", lvl[m - 1].datetime);
+	printf("222 %f, %zd\n", gl_levels[gl_levels.size() - 1].datetime, gl_levels.size());
+	*/
 }
 
 void MaskService::get_inverse_mask(IGlucoseLevels **levels, uint8_t mask) {
 	get_mask(levels, ~mask);
 }
 
-void MaskService::get_levels(TGlucoseLevel **levels) {
+void MaskService::get_levels(TGlucoseLevel **levels) const {
 	*levels = this->levels;
 }
 
-void MaskService::get_levels_size(size_t *size) {
+void MaskService::get_levels_size(size_t *size) const {
 	*size = this->size;
 }

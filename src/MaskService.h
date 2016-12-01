@@ -14,11 +14,11 @@ class MaskService : public virtual CReferenced {
 	size_t size;
 public:
 	MaskService(TGlucoseLevel *levels, size_t const &size);
-	void get_masked_values(std::vector<TGlucoseLevel> &glucose_levels, uint8_t mask);
+	void get_masked_values(std::vector<TGlucoseLevel> &glucose_levels, uint8_t mask) const;
 	void get_mask(IGlucoseLevels **levels, uint8_t mask);
 	void get_inverse_mask(IGlucoseLevels **levels, uint8_t mask);
-	void get_levels(TGlucoseLevel **levels);
-	void get_levels_size(size_t *size);
+	void get_levels(TGlucoseLevel **levels) const;
+	void get_levels_size(size_t *size) const;
 };
 
 #pragma warning( pop )

@@ -32,43 +32,47 @@ void load_segments(std::vector<std::vector<TGlucoseLevel>> &segments) {
 	}
 }
 
-HRESULT approx_all_masks(MaskService *mask_service) {
-	CCommonApprox *approx;
-	IGlucoseLevels *levels;
-	TApproximationParams params;
-	/*tbb::parallel_for(0, 255, 1, [&, mask_service](int i) {
-		mask_service->get_mask(&levels, i);
-		if (levels) printf("null\n");
-		CubicApprox cubic(levels);
-		approx = &cubic;
-		approx->Approximate(&params);
-		Statistics stats(mask_service, i, approx);
-		printf("Got mask %d\n", i);
-	});*/
+//#define TBB
+#define MASKS 255 // 255
+#define SEGMENTS segments.size() // segments.size()
+#define SEGMENT i // i
 
-	for (int i = 1; i > 0; i--) { // 255
+HRESULT approx_all_masks(MaskService *mask_service) {
+#ifdef TBB
+	tbb::parallel_for(1, MASKS + 1, 1, [&, mask_service](int mask) { // 256
+		IGlucoseLevels *levels;
+		//printf("getting mask %d\n", mask);
+		mask_service->get_mask(&levels, mask);
+		AkimaApprox approx(levels);
+		approx.Approximate(nullptr);
+		Statistics stats(mask_service, mask, &approx);
+		//printf("got mask %d\n", mask);
+	});
+#else
+	for (int i = MASKS; i > 0; i--) {
+		CCommonApprox *approx;
+		IGlucoseLevels *levels;
 		mask_service->get_mask(&levels, i);
 		CubicApprox cubic(levels);
 		approx = &cubic;
-		approx->Approximate(&params);
+		approx->Approximate(nullptr);
 		Statistics stats(mask_service, i, approx);
 	}
-
+#endif
 	return S_OK;
 }
 
 HRESULT handle_all_segments() {
 	std::vector<std::vector<TGlucoseLevel>> segments;
-	MaskService *mask_service;
 
 	load_segments(segments);
-	for (size_t i = 0; i < 1; i++) { //size
+
+	for (size_t i = 0; i < SEGMENTS; i++) {
 		printf("Getting all masks for segment %zd\n", i);
-		mask_service = new MaskService(&segments[1][0], segments[1].size());
+		MaskService mask_service(&segments[SEGMENT][0], segments[SEGMENT].size());
 		printf("Got all masks for segment %zd\n", i);
-		approx_all_masks(mask_service);
+		approx_all_masks(&mask_service);
 		printf("Counted all masks for segment %zd\n", i);
-		delete mask_service;
 	}
 	printf("Done all segments.\n");
 	return S_OK;

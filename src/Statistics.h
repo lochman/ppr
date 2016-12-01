@@ -14,7 +14,7 @@ class Statistics : public virtual CReferenced {
 	TGlucoseLevel *ref_values;
 	size_t size;
 public:
-	Statistics(MaskService *mask_service, int &mask, CCommonApprox *approx);
+	Statistics(const MaskService *mask_service, int &mask, CCommonApprox *approx);
 	void get_errors(TGlucoseLevel *ref_values, int &mask, CCommonApprox *approx);
 	void print_stats(std::vector<floattype> &errors);
 };
