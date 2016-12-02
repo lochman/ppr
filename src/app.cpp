@@ -5,21 +5,10 @@
 #include "DBDataService.h"
 #include "approx\src\CubicApprox.h"
 #include "approx\src\AkimaApprox.h"
+#include "approx\src\CatmullRomApprox.h"
 #include "MaskService.h"
 #include "Statistics.h"
 #include <tbb/tbb.h>
-
-void print_segments(const std::vector<std::shared_ptr<CGlucoseLevels>> &segments) {
-	size_t size;
-	TGlucoseLevel *levels;
-	for (int i = 0; i < 1; i++) {
-		segments[i]->GetLevelsCount(&size);
-		segments[i]->GetLevels(&levels);
-		for (int j = 0; j < size; j++) {
-			fprintf(stdout, "%d %zd %f %f\n", i, size, levels[j].datetime, levels[j].level);
-		}
-	}
-}
 
 void load_segments(std::vector<std::vector<TGlucoseLevel>> &segments) {
 	DBDataService dbservice("data\\direcnet.sqlite");
@@ -33,9 +22,9 @@ void load_segments(std::vector<std::vector<TGlucoseLevel>> &segments) {
 }
 
 //#define TBB
-#define MASKS 255 // 255
-#define SEGMENTS segments.size() // segments.size()
-#define SEGMENT i // i
+#define MASKS 1		  // 1 | 255
+#define SEGMENTS 1		  // 1 | segments.size()
+#define SEGMENT 1		  // 1 | i
 
 HRESULT approx_all_masks(MaskService *mask_service) {
 #ifdef TBB
@@ -49,11 +38,11 @@ HRESULT approx_all_masks(MaskService *mask_service) {
 		//printf("got mask %d\n", mask);
 	});
 #else
-	for (int i = MASKS; i > 0; i--) {
+	for (int i = MASKS; i == MASKS; i--) { // i > 0
 		CCommonApprox *approx;
 		IGlucoseLevels *levels;
 		mask_service->get_mask(&levels, i);
-		CubicApprox cubic(levels);
+		CatmullRomApprox cubic(levels);
 		approx = &cubic;
 		approx->Approximate(nullptr);
 		Statistics stats(mask_service, i, approx);

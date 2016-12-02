@@ -123,6 +123,7 @@
   <ItemGroup>
     <ClCompile Include="src\app.cpp" />
     <ClCompile Include="src\approx\src\AkimaApprox.cpp" />
+    <ClCompile Include="src\approx\src\CatmullRomApprox.cpp" />
     <ClCompile Include="src\approx\src\CommonApprox.cpp" />
     <ClCompile Include="src\approx\src\CubicApprox.cpp" />
     <ClCompile Include="src\approx\src\GlucoseLevels.cpp" />
@@ -135,6 +136,7 @@
   <ItemGroup>
     <ClInclude Include="resource.h" />
     <ClInclude Include="src\approx\src\AkimaApprox.h" />
+    <ClInclude Include="src\approx\src\CatmullRomApprox.h" />
     <ClInclude Include="src\approx\src\CommonApprox.h" />
     <ClInclude Include="src\approx\src\CubicApprox.h" />
     <ClInclude Include="src\approx\src\GlucoseLevels.h" />

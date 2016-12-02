@@ -1,4 +1,5 @@
 #include "AkimaApprox.h"
+#include <amp.h>
 #include <amp_math.h>
 
 floattype AkimaApprox::get_m(int i) {
@@ -56,13 +57,28 @@ HRESULT AkimaApprox::iterate(floattype &m_next, int i, floattype *ti) {
 	return S_OK;
 }
 
+concurrency::accelerator pick_accelerator() {
+	// Get all accelerators known to the C++ AMP runtime
+	std::vector<concurrency::accelerator> accs = concurrency::accelerator::get_all();
+	// Empty ctor returns the one picked by the runtime by default
+	concurrency::accelerator chosen_one;
+	// Choose one; one that isn't emulated, for example
+	auto result = std::find_if(accs.begin(), accs.end(), [](concurrency::accelerator acc) {
+		return !acc.is_emulated; //.supports_double_precision
+	});
+	if (result != accs.end()) chosen_one = *(result); // else not shown
+	// Output its description (tip: explore the other properties)
+	printf("%s\n", chosen_one.description);
+	// Set it as default ... can only call this once per process
+	concurrency::accelerator::set_default(chosen_one.device_path);
+	// ... or just return it
+	return chosen_one;
+}
+
 //#define GPU
 
 HRESULT AkimaApprox::Approximate(TApproximationParams * params) {
 	floattype ti, ti1, m_next;
-
-	mEnumeratedLevels->GetLevels(&levels);
-	mEnumeratedLevels->GetLevelsCount(&size);
 	if (size < 4) { return S_FALSE; }
 
 	p1.resize(size);
@@ -83,21 +99,52 @@ HRESULT AkimaApprox::Approximate(TApproximationParams * params) {
 	ti = get_t(m[0], m[1], m[2], m[3]);
 
 #ifdef GPU	// GPU
-
-	std::vector<floattype> vec_times(size);
-	std::vector<floattype> vec_lvls(size);
-
+	std::vector<concurrency::accelerator> accls = concurrency::accelerator::get_all();
+	std::vector<concurrency::accelerator>::iterator usefulAccls = std::find_if(accls.begin(), accls.end(),
+	[=](concurrency::accelerator& a)
+	{
+	return !a.is_emulated && (a.dedicated_memory >= 1024) && a.has_display;
+	});
+	if (usefulAccls != accls.end())
+	{
+		concurrency::accelerator::set_default(usefulAccls->device_path);
+		printf("Default accelerator is now %s\n", concurrency::accelerator(concurrency::accelerator::default_accelerator).description);
+	}
+	else
+		printf("No suitable accelerator available\n");
+	//concurrency::accelerator_view acc_vw = pick_accelerator().default_view;
+	std::vector<floattype> vec_times(size), vec_lvls(size);
+	//std::deque<int> indices(size);
+	//printf("%s\n", concurrency::accelerator(concurrency::accelerator::default_accelerator).description);
 	for (size_t i = 0; i < size; i++) {
 		vec_times[i] = levels[i].datetime;
 		vec_lvls[i] = levels[i].level;
+		//indices[i] = i;
 	}
+	// remove first two and last two indices
+	/*
+	indices.pop_front();
+	indices.pop_front();
+	indices.pop_back();
+	indices.pop_back();
+	*/
 
-	std::vector<int> indices(size - 4);
+	//concurrency::extent<1> ext(size);
+	concurrency::array_view<floattype> times(size, vec_times);//, lvls(size, vec_lvls);
+	//concurrency::array_view<floattype, 1> p1s(size, p1);
+	//p1s.discard_data();
+
+	concurrency::parallel_for_each(times.extent, [=](concurrency::index<1> idx) restrict(amp) {
+		//p1s[idx] = times[idx] + lvls[idx];
+	});
+	//p1s.synchronize();
+	/*
+	std::vector<int> indices(size);
 	for (size_t i = 2; i < size - 3; i++) { indices.push_back(i); }
-
+	
 	concurrency::extent<1> ext(&indices[0]);
-	concurrency::array_view<const floattype> times(ext, vec_times), lvls(ext, vec_lvls);
-	concurrency::array_view<floattype> p1s(ext, p1), p2s(ext, p2), p3s(ext, p3);
+	concurrency::array_view<const floattype, 1> times(size, vec_times), lvls(size, vec_lvls);
+	concurrency::array_view<floattype, 1> p1s(size, p1), p2s(size, p2), p3s(size, p3);
 	p1s.discard_data();
 	p2s.discard_data();
 	p3s.discard_data();
@@ -136,7 +183,8 @@ HRESULT AkimaApprox::Approximate(TApproximationParams * params) {
 	m[2] = get_m(size - 3);
 	m[3] = get_m(size - 2);
 	ti = get_t(m[0], m[1], m[2], m[3]);
-#else // GPU
+	*/
+#else // end GPU
 	for (size_t i = 0; i < size - 3; i++) {
 		//if (get_m(i + 2, &m_next) == S_FALSE) { return S_FALSE; } // swap lines?nop
 		m_next = get_m(i + 2);
@@ -154,10 +202,7 @@ HRESULT AkimaApprox::Approximate(TApproximationParams * params) {
 
 HRESULT AkimaApprox::GetLevels(floattype desiredtime, floattype stepping, size_t count,
 	floattype *levels, size_t *filled, size_t derivationorder) {
-	TGlucoseLevel *gl;
-	size_t size;
-	mEnumeratedLevels->GetLevelsCount(&size);
-	mEnumeratedLevels->GetLevels(&gl);
+	TGlucoseLevel *gl = this->levels;
 	floattype time = desiredtime, x;
 	int i;
 	for (size_t j = 0; j < count; j++) {

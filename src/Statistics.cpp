@@ -55,9 +55,27 @@ void print_graph(TGlucoseLevel *levels, int &mask, std::vector<floattype> &error
 	}
 }
 
+void print_graph_new(TGlucoseLevel *levels, size_t &size, size_t &steps, int &mask, CCommonApprox *approx) {
+	std::vector<floattype> approx_lvls(size);
+	floattype from = levels[0].datetime,
+			  to = levels[size - 1].datetime,
+			  stepsize = (to - from) / (floattype)steps;
+	size_t filled, j = 0;
+	approx->GetLevels(from, stepsize, steps, &approx_lvls[0], &filled, 0);
+	
+	printf("time,reference\n");
+	for (size_t i = 0; i < size; i++) {
+		printf("%f,%f\n", levels[i].datetime, levels[i].level);
+	}
+	printf("time,\"mask %d\"\n", mask);
+	for (size_t i = 0; i < approx_lvls.size(); i++) {
+		printf("%f,%f\n", from + i * stepsize, approx_lvls[i]);
+	}
+}
+
 void Statistics::get_errors(TGlucoseLevel *levels, int &mask, CCommonApprox *approx) {
 	std::vector<floattype> approx_lvls(size), abs_errors, rel_errors;
-	size_t filled;
+	size_t filled, steps = size;
 
 	for (size_t i = 0; i < size; i++) {
 		approx->GetLevels(levels[i].datetime, 0, 1, &approx_lvls[i], &filled, 0);
@@ -65,7 +83,8 @@ void Statistics::get_errors(TGlucoseLevel *levels, int &mask, CCommonApprox *app
 		rel_errors.push_back(abs_errors[i] / levels[i].level);
 	}
 	//printf("errors:\n");
-	//print_graph(levels, mask, approx_lvls);
+	print_graph(levels, mask, approx_lvls);
+	//print_graph_new(levels, size, steps, mask, approx);
 	/*
 	print_stats(abs_errors);
 	print_stats(rel_errors);

@@ -5,7 +5,11 @@
 const floattype dfYOffset = 10000.0;
 
 CCommonApprox::CCommonApprox(IGlucoseLevels *levels) : mEnumeratedLevels(levels) {
-	if (mEnumeratedLevels != NULL) mEnumeratedLevels->AddRef();
+	if (mEnumeratedLevels != NULL) {
+		mEnumeratedLevels->AddRef();
+		mEnumeratedLevels->GetLevels(&this->levels);
+		mEnumeratedLevels->GetLevelsCount(&size);
+	}
 }
 
 CCommonApprox::~CCommonApprox() {

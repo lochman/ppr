@@ -3,7 +3,6 @@
 #include "CommonApprox.h"
 #include <vector>
 #include <deque>
-#include <amp.h>
 
 #pragma warning( push )
 #pragma warning( disable : 4250 ) // C4250 - 'class1' : inherits 'class2::member' via dominance
@@ -11,8 +10,6 @@
 class AkimaApprox : public CCommonApprox {
 	std::vector<floattype> p1, p2, p3;
 	std::deque<floattype> m;
-	TGlucoseLevel *levels;
-	size_t size;
 	//HRESULT get_m(int i, floattype *m);
 	floattype get_m(int i);
 	//floattype get_t(floattype m0, floattype m1, floattype m2, floattype m3) restrict(cpu, amp);

@@ -14,7 +14,9 @@ extern const floattype dfYOffset; //some interpolation requires negative values
 
 class CCommonApprox : public IApproximatedGlucoseLevels, public virtual CReferenced {
 protected:
-	IGlucoseLevels *mEnumeratedLevels;	
+	IGlucoseLevels *mEnumeratedLevels;
+	TGlucoseLevel *levels;
+	size_t size;
 public:
 	CCommonApprox(IGlucoseLevels *levels);
 	virtual ~CCommonApprox();

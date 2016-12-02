@@ -45,6 +45,9 @@
     <ClCompile Include="src\approx\src\AkimaApprox.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\approx\src\CatmullRomApprox.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\approx\src\CommonApprox.h">
@@ -87,6 +90,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\approx\src\AkimaApprox.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\approx\src\CatmullRomApprox.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
