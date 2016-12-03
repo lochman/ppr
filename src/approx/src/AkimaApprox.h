@@ -15,6 +15,7 @@ class AkimaApprox : public CCommonApprox {
 	//floattype get_t(floattype m0, floattype m1, floattype m2, floattype m3) restrict(cpu, amp);
 	//HRESULT get_t(floattype *t);
 	HRESULT iterate(floattype &m_next, int i, floattype *ti);
+	void approximate_gpu(floattype *ti);
 public:
 	AkimaApprox(IGlucoseLevels *levels) : CCommonApprox(levels) { };
 	virtual HRESULT Approximate(TApproximationParams * params);

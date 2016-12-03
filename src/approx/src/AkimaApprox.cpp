@@ -57,22 +57,54 @@ HRESULT AkimaApprox::iterate(floattype &m_next, int i, floattype *ti) {
 	return S_OK;
 }
 
-concurrency::accelerator pick_accelerator() {
-	// Get all accelerators known to the C++ AMP runtime
-	std::vector<concurrency::accelerator> accs = concurrency::accelerator::get_all();
-	// Empty ctor returns the one picked by the runtime by default
-	concurrency::accelerator chosen_one;
-	// Choose one; one that isn't emulated, for example
-	auto result = std::find_if(accs.begin(), accs.end(), [](concurrency::accelerator acc) {
-		return !acc.is_emulated; //.supports_double_precision
+void AkimaApprox::approximate_gpu(floattype *ti) {
+	std::vector<floattype> vec_times(size), vec_lvls(size);
+	floattype m_next;
+	for (size_t i = 0; i < size; i++) {
+		vec_times[i] = levels[i].datetime;
+		vec_lvls[i] = levels[i].level;
+	}
+
+	concurrency::extent<1> ext(size - 3);
+	const concurrency::array_view<const floattype, 1> times(size, vec_times), lvls(size, vec_lvls);
+	concurrency::array_view<floattype, 1> p1s(size, p1), p2s(size, p2), p3s(size, p3);
+	p1s.discard_data();
+	p2s.discard_data();
+	p3s.discard_data();
+	concurrency::parallel_for_each(ext, [=](concurrency::index<1> idx) restrict(amp) {
+		floattype yy, xx, ti, ti1, m0, m1, m2, m3, m4;
+		const int i = idx[0] + 2; // offset
+		m0 = (lvls[i - 1] - lvls[i - 2]) / (times[i - 1] - times[i - 2]);
+		m1 = (lvls[i] - lvls[i - 1]) / (times[i] - times[i - 1]);
+		m2 = (lvls[i + 1] - lvls[i]) / (times[i + 1] - times[i]);
+		m3 = (lvls[i + 2] - lvls[i + 1]) / (times[i + 2] - times[i + 1]);
+		m4 = (lvls[i + 3] - lvls[i + 2]) / (times[i + 3] - times[i + 2]);
+		ti = get_t(m0, m1, m2, m3);
+		ti1 = get_t(m1, m2, m3, m4);
+
+		yy = lvls[i + 1] - lvls[i];
+		xx = times[i + 1] - times[i];
+
+		p1s[i] = ti;
+		p2s[i] = get_p2(xx, yy, ti, ti1);
+		p3s[i] = get_p3(xx, yy, ti, ti1);
 	});
-	if (result != accs.end()) chosen_one = *(result); // else not shown
-	// Output its description (tip: explore the other properties)
-	printf("%s\n", chosen_one.description);
-	// Set it as default ... can only call this once per process
-	concurrency::accelerator::set_default(chosen_one.device_path);
-	// ... or just return it
-	return chosen_one;
+	p1s.synchronize();
+	p2s.synchronize();
+	p3s.synchronize();
+
+	// calc with m-1, m-2
+	m_next = get_m(2);
+	this->iterate(m_next, 0, ti);
+	m_next = get_m(3);
+	this->iterate(m_next, 1, ti);
+	// prepare for mn+1, mn+2
+	m.clear();
+	m.push_back(get_m(size - 5));
+	m.push_back(get_m(size - 4));
+	m.push_back(get_m(size - 3));
+	m.push_back(get_m(size - 2));
+	*ti = get_t(m[0], m[1], m[2], m[3]);
 }
 
 //#define GPU
@@ -99,91 +131,7 @@ HRESULT AkimaApprox::Approximate(TApproximationParams * params) {
 	ti = get_t(m[0], m[1], m[2], m[3]);
 
 #ifdef GPU	// GPU
-	std::vector<concurrency::accelerator> accls = concurrency::accelerator::get_all();
-	std::vector<concurrency::accelerator>::iterator usefulAccls = std::find_if(accls.begin(), accls.end(),
-	[=](concurrency::accelerator& a)
-	{
-	return !a.is_emulated && (a.dedicated_memory >= 1024) && a.has_display;
-	});
-	if (usefulAccls != accls.end())
-	{
-		concurrency::accelerator::set_default(usefulAccls->device_path);
-		printf("Default accelerator is now %s\n", concurrency::accelerator(concurrency::accelerator::default_accelerator).description);
-	}
-	else
-		printf("No suitable accelerator available\n");
-	//concurrency::accelerator_view acc_vw = pick_accelerator().default_view;
-	std::vector<floattype> vec_times(size), vec_lvls(size);
-	//std::deque<int> indices(size);
-	//printf("%s\n", concurrency::accelerator(concurrency::accelerator::default_accelerator).description);
-	for (size_t i = 0; i < size; i++) {
-		vec_times[i] = levels[i].datetime;
-		vec_lvls[i] = levels[i].level;
-		//indices[i] = i;
-	}
-	// remove first two and last two indices
-	/*
-	indices.pop_front();
-	indices.pop_front();
-	indices.pop_back();
-	indices.pop_back();
-	*/
-
-	//concurrency::extent<1> ext(size);
-	concurrency::array_view<floattype> times(size, vec_times);//, lvls(size, vec_lvls);
-	//concurrency::array_view<floattype, 1> p1s(size, p1);
-	//p1s.discard_data();
-
-	concurrency::parallel_for_each(times.extent, [=](concurrency::index<1> idx) restrict(amp) {
-		//p1s[idx] = times[idx] + lvls[idx];
-	});
-	//p1s.synchronize();
-	/*
-	std::vector<int> indices(size);
-	for (size_t i = 2; i < size - 3; i++) { indices.push_back(i); }
-	
-	concurrency::extent<1> ext(&indices[0]);
-	concurrency::array_view<const floattype, 1> times(size, vec_times), lvls(size, vec_lvls);
-	concurrency::array_view<floattype, 1> p1s(size, p1), p2s(size, p2), p3s(size, p3);
-	p1s.discard_data();
-	p2s.discard_data();
-	p3s.discard_data();
-
-	concurrency::parallel_for_each(ext, [=](concurrency::index<1> idx) restrict(amp) {
-		floattype yy, xx, ti, ti1, m0, m1, m2, m3, m4;
-		
-		m0 = (lvls[idx - 1] - lvls[idx - 2]) / (times[idx - 1] - times[idx - 2]);
-		m1 = (lvls[idx] - lvls[idx - 1]) / (times[idx] - times[idx - 1]);
-		m2 = (lvls[idx + 1] - lvls[idx]) / (times[idx + 1] - times[idx]);
-		m3 = (lvls[idx + 2] - lvls[idx + 1]) / (times[idx + 2] - times[idx + 1]);
-		m4 = (lvls[idx + 3] - lvls[idx + 2]) / (times[idx + 3] - times[idx + 2]);
-		ti = get_t(m0, m1, m2, m3);
-		ti1 = get_t(m1, m2, m3, m4);
-
-		yy = lvls(idx + 1) - lvls(idx);
-		xx = times(idx + 1) - times(idx);
-
-		p1s[idx] = ti;
-		p2s[idx] = get_p2(xx, yy, ti, ti1);
-		p3s[idx] = get_p3(xx, yy, ti, ti1);
-	});
-	p1s.synchronize();
-	p2s.synchronize();
-	p3s.synchronize();
-
-	// calc with m-1, m-2
-	m_next = get_m(2);
-	this->iterate(m_next, 0, &ti);
-	m_next = get_m(3);
-	this->iterate(m_next, 1, &ti);
-	// prepare for mn+1, mn+2
-	m.clear();
-	m[0] = get_m(size - 5);
-	m[1] = get_m(size - 4);
-	m[2] = get_m(size - 3);
-	m[3] = get_m(size - 2);
-	ti = get_t(m[0], m[1], m[2], m[3]);
-	*/
+	approximate_gpu(&ti);
 #else // end GPU
 	for (size_t i = 0; i < size - 3; i++) {
 		//if (get_m(i + 2, &m_next) == S_FALSE) { return S_FALSE; } // swap lines?nop
@@ -191,12 +139,11 @@ HRESULT AkimaApprox::Approximate(TApproximationParams * params) {
 		this->iterate(m_next, i, &ti);
 	}
 #endif
-	
 	m_next = 2 * m[2] - m[3];
 	this->iterate(m_next, size - 3, &ti);
 	m_next = 2 * m[2] - m[3];
 	this->iterate(m_next, size - 2, &ti);
-
+	//concurrency::amp_uninitialize(); // release memory associated with amp
 	return S_OK;
 }
 

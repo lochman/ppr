@@ -72,6 +72,11 @@
     <IncludePath>$(TBB_CONFIG)\include;$(SQLITE3)\include;$(IncludePath)</IncludePath>
     <LibraryPath>$(TBB_CONFIG)\lib\intel64\vc14;$(SQLITE3)\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ExecutablePath>$(TBB_CONFIG)\bin\intel64\vc14;$(SQLITE3)\bin;$(ExecutablePath)</ExecutablePath>
+    <IncludePath>$(TBB_CONFIG)\include;$(SQLITE3)\include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(TBB_CONFIG)\lib\intel64\vc14;$(SQLITE3)\lib;$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -118,7 +123,11 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Link>
       <AdditionalDependencies>sqlite3.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(TBB_CONFIG)\lib\intel64\vc14;$(SQLITE3)\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(TBB_CONFIG)\include;$(SQLITE3)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\app.cpp" />
