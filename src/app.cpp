@@ -42,7 +42,7 @@ HRESULT approx_all_masks(MaskService *mask_service) {
 		CCommonApprox *approx;
 		IGlucoseLevels *levels;
 		mask_service->get_mask(&levels, i);
-		AkimaApprox cubic(levels);
+		CatmullRomApprox cubic(levels);
 		//CubicApprox cubic(levels);
 		approx = &cubic;
 		approx->Approximate(nullptr);
