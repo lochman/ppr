@@ -17,23 +17,31 @@ floattype get_distance(const floattype x0, const floattype y0, const floattype x
 }
 
 HRESULT CatmullRomApprox::get_coefficients(const floattype p0, const floattype p1, const floattype t0, const floattype t1, const size_t i) {
+	a[i] = p0;
 	b[i] = t0;
 	c[i] = -3 * p0 + 3 * p1 - 2 * t0 - t1;
 	d[i] = 2 * p0 - 2 * p1 + t0 + t1;
 	return S_OK;
 }
 
-HRESULT extrapolated_point(const TGlucoseLevel &p0, const TGlucoseLevel &p1, TGlucoseLevel *ext) {
-	ext->datetime = p1.datetime + 0.5 * (p1.datetime - p0.datetime);
-	ext->level = p1.level + 0.5 * (p1.level - p0.level);
+floattype get_ext_point_time(const TGlucoseLevel &p0, const TGlucoseLevel &p1) {
+	return 2 * p0.datetime - p1.datetime;
+}
+
+HRESULT ext_point_linear(const TGlucoseLevel &p0, const TGlucoseLevel &p1, TGlucoseLevel *ext) {
+	ext->datetime = get_ext_point_time(p0, p1);
+	ext->level = p0.level + ((ext->datetime - p0.datetime) / (p1.datetime - p0.datetime)) * (p1.level - p0.level);
 	return S_OK;
 }
 
 HRESULT CatmullRomApprox::extrapolation() {
-	TGlucoseLevel ext1, ext2, ext3;
-	extrapolated_point(levels[size - 2], levels[size - 1], &ext1);
-	extrapolated_point(levels[size - 1], ext1, &ext2);
-	extrapolated_point(ext1, ext2, &ext3);
+	TGlucoseLevel ext0, ext1, ext2, ext3;
+	ext_point_linear(levels[0], levels[1], &ext0);
+	iterate(ext0, levels[0], levels[1], levels[2], 0);
+
+	ext_point_linear(levels[size - 1], levels[size - 2], &ext1);
+	ext_point_linear(ext1, levels[size - 1], &ext2);
+	ext_point_linear(ext2, ext1, &ext3);
 
 	iterate(levels[size - 3], levels[size - 2], levels[size - 1], ext1, size - 3);
 	iterate(levels[size - 2], levels[size - 1], ext1, ext2, size - 2);
@@ -54,7 +62,7 @@ HRESULT CatmullRomApprox::iterate(const TGlucoseLevel &p0, const TGlucoseLevel &
 	tan1 = get_tangent(p0.level, p1.level, p2.level, t0, t1, t1);
 	tan2 = get_tangent(p1.level, p2.level, p3.level, t1, t2, t1);
 
-	get_coefficients(p0.level, p1.level, tan1, tan2, i);
+	get_coefficients(p1.level, p2.level, tan1, tan2, i);
 	return S_OK;
 }
 
@@ -67,42 +75,44 @@ HRESULT CatmullRomApprox::approximate_gpu() {
 
 	concurrency::extent<1> ext(size - 3);
 	const concurrency::array_view<const floattype, 1> times(size, vec_times), lvls(size, vec_lvls);
-	concurrency::array_view<floattype, 1> b_view(size, b), c_view(size, c), d_view(size, d);
-	//a_view.discard_data();
+	concurrency::array_view<floattype, 1> a_view(size, a), b_view(size, b), c_view(size, c), d_view(size, d);
+	a_view.discard_data();
 	b_view.discard_data();
 	c_view.discard_data();
 	d_view.discard_data();
 	concurrency::parallel_for_each(ext, [=](concurrency::index<1> idx) restrict(amp) {
-		const int i = idx[0];
-		const floattype t0 = get_distance(lvls[i], lvls[i], times[i + 1], times[i + 1]),
-						t1 = get_distance(lvls[i + 1], lvls[i + 1], times[i + 2], times[i + 2]),
-						t2 = get_distance(lvls[i + 2], lvls[i + 2], times[i + 3], times[i + 3]),
-						tan1 = get_tangent(lvls[i], lvls[i + 1], lvls[i + 2], t0, t1, t1),
-						tan2 = get_tangent(lvls[i + 1], lvls[i + 2], lvls[i + 3], t1, t2, t1);
-		//a_view[idx] = lvls[idx];
+		const int i = idx[0] + 1;
+		const floattype t0 = get_distance(times[i - 1], lvls[i - 1], times[i], lvls[i]),
+						t1 = get_distance(times[i], lvls[i], times[i + 1], lvls[i + 1]),
+						t2 = get_distance(times[i + 1], lvls[i + 1], times[i + 2], lvls[i + 2]),
+						tan1 = get_tangent(lvls[i - 1], lvls[i], lvls[i + 1], t0, t1, t1),
+						tan2 = get_tangent(lvls[i], lvls[i + 1], lvls[i + 2], t1, t2, t1);
+		a_view[i] = lvls[i];
 		b_view[i] = tan1;
 		c_view[i] = -3 * lvls[i] + 3 * lvls[i + 1] - 2 * tan1 - tan2;
 		d_view[i] = 2 * lvls[i] - 2 * lvls[i + 1] + tan1 + tan2;
 	});
-	//a_view.synchronize();
+	a_view.synchronize();
 	b_view.synchronize();
 	c_view.synchronize();
 	d_view.synchronize();
+	
 	return S_OK;
 }
 
 #define GPU
 
 HRESULT CatmullRomApprox::Approximate(TApproximationParams * params) {
-	//a.reserve(size);
+	a.resize(size);
 	b.resize(size);
 	c.resize(size);
 	d.resize(size);
+	
 #ifdef GPU	// GPU
 	approximate_gpu();
 #else
-	for (size_t i = 0; i < size - 3; i++) {
-		iterate(levels[i], levels[i + 1], levels[i + 2], levels[i + 3], i);
+	for (size_t i = 1; i < size - 2; i++) {
+		iterate(levels[i - 1], levels[i], levels[i + 1], levels[i + 2], i);
 	}
 #endif
 	extrapolation();
@@ -125,7 +135,7 @@ HRESULT CatmullRomApprox::GetLevels(floattype desiredtime, floattype stepping, s
 			levels[j] = 2 * c[i] + 6 * d[i] * x;
 			break;
 		default:
-			levels[j] = gl[i].level + b[i] * x + c[i] * pow(x, 2) + d[i] * pow(x, 3);
+			levels[j] = a[i] + b[i] * x + c[i] * pow(x, 2) + d[i] * pow(x, 3);
 		}
 		time += stepping;
 		(*filled)++;
