@@ -9,68 +9,84 @@
 #include "MaskService.h"
 #include "Statistics.h"
 #include <tbb/tbb.h>
+#include "ArgParser.h"
+#include "defs.h"
 
-void load_segments(std::vector<std::vector<TGlucoseLevel>> &segments) {
-	DBDataService dbservice("data\\direcnet.sqlite");
+HRESULT load_segments(const std::string &filename, std::vector<std::vector<TGlucoseLevel>> &segments) {
+	DBDataService dbservice(filename.c_str());
 	DataService *data_service = &dbservice;
 
 	if (data_service->get_segments(segments) != S_OK) {
 		printf("Failed to load segments from database.\n");
-		system("pause");
-		exit(1);
+		return S_FALSE;
 	}
+	return S_OK;
 }
 
-//#define TBB
-#define MASKS 1		  // 1 | 255
-#define SEGMENTS 1		  // 1 | segments.size()
-#define SEGMENT 1		  // 1 | i
+HRESULT approx_mask(MaskService *mask_service, const std::string &method, int i) {
+	CCommonApprox *approx;
+	IGlucoseLevels *levels;
+	mask_service->get_mask(&levels, i);
+	if (str_compare(method, "akima") || str_compare(method, "a")) {
+		approx = new AkimaApprox(levels);
+	} else if (str_compare(method, "catmull") || str_compare(method, "cr")) {
+		approx = new CatmullRomApprox(levels);
+	} else if (str_compare(method, "cubic") || str_compare(method, "c")) {
+		approx = new CubicApprox(levels);
+	} else {
+		approx = new AkimaApprox(levels);
+	}
+	approx->Approximate(nullptr);
+	Statistics stats(mask_service, i, approx);
+	delete approx;
+	return S_OK;
+}
 
-HRESULT approx_all_masks(MaskService *mask_service) {
+HRESULT approx_all_masks(MaskService *mask_service, const std::string &method) {
 #ifdef TBB
-	tbb::parallel_for(1, MASKS + 1, 1, [&, mask_service](int mask) { // 256
-		IGlucoseLevels *levels;
-		//printf("getting mask %d\n", mask);
-		mask_service->get_mask(&levels, mask);
-		AkimaApprox approx(levels);
-		approx.Approximate(nullptr);
-		Statistics stats(mask_service, mask, &approx);
-		//printf("got mask %d\n", mask);
+	tbb::parallel_for(1, MASK_COUNT + 1, 1, [&, mask_service](int mask) {
+		approx_mask(mask_service, method, mask);
 	});
 #else
-	for (int i = MASKS; i == MASKS; i--) { // i > 0
-		CCommonApprox *approx;
-		IGlucoseLevels *levels;
-		mask_service->get_mask(&levels, i);
-		CatmullRomApprox cubic(levels);
-		//CubicApprox cubic(levels);
-		approx = &cubic;
-		approx->Approximate(nullptr);
-		Statistics stats(mask_service, i, approx);
+	for (int i = MASK_COUNT; i > 0; i--) { // i > 0
+		approx_mask(mask_service, method, i);
 	}
 #endif
 	return S_OK;
 }
 
-HRESULT handle_all_segments() {
+HRESULT handle_all_segments(const std::string &filename, const std::string &method) {
 	std::vector<std::vector<TGlucoseLevel>> segments;
-
-	load_segments(segments);
+	if (load_segments(filename, segments) == S_FALSE) { return S_FALSE; }
 
 	for (size_t i = 0; i < SEGMENTS; i++) {
-		printf("Getting all masks for segment %zd\n", i);
+		//printf("Getting all masks for segment %zd\n", i);
 		MaskService mask_service(&segments[SEGMENT][0], segments[SEGMENT].size());
-		printf("Got all masks for segment %zd\n", i);
-		approx_all_masks(&mask_service);
-		printf("Counted all masks for segment %zd\n", i);
+		//printf("Got all masks for segment %zd\n", i);
+		approx_all_masks(&mask_service, method);
+		//printf("Counted all masks for segment %zd\n", i);
 	}
-	printf("Done all segments.\n");
 	return S_OK;
 }
 
-int main() {
+void print_help() {
+	printf("help\n");
+}
+
+int main(int argc, char *argv[]) {
 	system("pause");
-	handle_all_segments();
+	std::string filename, method;
+	ArgParser parser(argc, argv);
+	if (parser.check_option("-h")) {
+		print_help();
+		return 0;
+	}
+	filename = parser.get_option("-f");
+	if (filename.empty()) { filename = DB_FILE; }
+	method = parser.get_option("-m");
+
+	
+	handle_all_segments(filename, method);
 	system("pause");
 	return 0;
 }

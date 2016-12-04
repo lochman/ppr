@@ -1,4 +1,5 @@
 #include "AkimaApprox.h"
+#include "../../defs.h"
 #include <amp.h>
 #include <amp_math.h>
 
@@ -106,8 +107,6 @@ void AkimaApprox::approximate_gpu(floattype *ti) {
 	m.push_back(get_m(size - 2));
 	*ti = get_t(m[0], m[1], m[2], m[3]);
 }
-
-#define GPU
 
 HRESULT AkimaApprox::Approximate(TApproximationParams * params) {
 	floattype ti, ti1, m_next;

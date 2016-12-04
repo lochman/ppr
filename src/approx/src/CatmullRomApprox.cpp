@@ -1,4 +1,5 @@
 #include "CatmullRomApprox.h"
+#include "../../defs.h"
 #include <amp.h>
 #include <amp_math.h>
 
@@ -99,8 +100,6 @@ HRESULT CatmullRomApprox::approximate_gpu() {
 	
 	return S_OK;
 }
-
-#define GPU
 
 HRESULT CatmullRomApprox::Approximate(TApproximationParams * params) {
 	a.resize(size);

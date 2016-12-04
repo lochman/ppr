@@ -1,12 +1,10 @@
 #include "CubicApprox.h"
-#include "../../MaskService.h"
+#include "../../defs.h"
 #include <math.h>
 #include <iterator>
 #include <algorithm>
 #include <amp.h>
 #include <deque>
-
-//#define GPU
 
 HRESULT CubicApprox::Approximate(TApproximationParams *params) {
 	//printf("Starting Cubic with size %zd\n", size); n = size-1

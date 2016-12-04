@@ -83,7 +83,7 @@ void Statistics::get_errors(TGlucoseLevel *levels, int &mask, CCommonApprox *app
 		rel_errors.push_back(abs_errors[i] / levels[i].level);
 	}
 	//printf("errors:\n");
-	print_graph(levels, mask, approx_lvls);
+	//print_graph(levels, mask, approx_lvls);
 	//print_graph_new(levels, size, steps, mask, approx);
 	/*
 	print_stats(abs_errors);
