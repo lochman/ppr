@@ -13,7 +13,7 @@ floattype max_error(std::vector<floattype> &errors) {
 	return *std::max_element(errors.begin(), errors.end());
 }
 
-floattype quantil(std::vector<floattype> &errors, floattype const &quantil) {
+floattype quantil(std::vector<floattype> &errors, const floattype quantil) {
 	size_t size = errors.size(), q_ceil, q_floor;
 	floattype result;
 	if (size == 1) { return errors[0]; } //TODO fix ceil
@@ -34,7 +34,7 @@ floattype mean(std::vector<floattype> &errors) {
 	return std::accumulate(errors.begin(), errors.end(), 0.0) / errors.size();
 }
 
-floattype std_deviation(std::vector<floattype> &errors, floattype &mean) {
+floattype std_deviation(std::vector<floattype> &errors, const floattype mean) {
 	double square_sum;
 	std::vector<double> diff(errors.size());
 	std::transform(errors.begin(), errors.end(), diff.begin(), [mean](double x) { return x - mean; });
@@ -42,20 +42,20 @@ floattype std_deviation(std::vector<floattype> &errors, floattype &mean) {
 	return std::sqrt(square_sum / errors.size() - 1);
 }
 
-void print_reference(TGlucoseLevel *ref_values, size_t &size) {
+void print_reference(const TGlucoseLevel *ref_values, const size_t size) {
 	for (size_t i = 0; i < size; i++) {
 		printf("%f,%f\n", ref_values[i].datetime, ref_values[i].level);
 	}
 }
 
-void print_graph(TGlucoseLevel *levels, int &mask, std::vector<floattype> &errors) {
+void print_graph(TGlucoseLevel *levels, const int mask, std::vector<floattype> &errors) {
 	printf("time,reference,\"mask %d\"\n", mask);
 	for (size_t i = 0; i < errors.size(); i++) {
 		printf("%f,%f,%f\n", levels[i].datetime, levels[i].level, errors[i]);
 	}
 }
 
-void print_graph_new(TGlucoseLevel *levels, size_t &size, size_t &steps, int &mask, CCommonApprox *approx) {
+void print_graph_new(TGlucoseLevel *levels, size_t &size, size_t &steps, const int mask, CCommonApprox *approx) {
 	std::vector<floattype> approx_lvls(size);
 	floattype from = levels[0].datetime,
 			  to = levels[size - 1].datetime,
@@ -73,7 +73,7 @@ void print_graph_new(TGlucoseLevel *levels, size_t &size, size_t &steps, int &ma
 	}
 }
 
-void Statistics::get_errors(TGlucoseLevel *levels, int &mask, CCommonApprox *approx) {
+void Statistics::get_errors(const TGlucoseLevel *levels, const int mask, CCommonApprox *approx) {
 	std::vector<floattype> approx_lvls(size), abs_errors, rel_errors;
 	size_t filled, steps = size;
 
@@ -91,7 +91,7 @@ void Statistics::get_errors(TGlucoseLevel *levels, int &mask, CCommonApprox *app
 	*/
 }
 
-Statistics::Statistics(const MaskService *mask_service, int &mask, CCommonApprox *approx) {
+Statistics::Statistics(const MaskService *mask_service, const int mask, CCommonApprox *approx) {
 	IGlucoseLevels *glevels;
 	TGlucoseLevel *levels;
 	mask_service->get_levels(&ref_values);

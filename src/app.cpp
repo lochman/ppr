@@ -9,6 +9,8 @@
 #include "MaskService.h"
 #include "Statistics.h"
 #include <tbb/tbb.h>
+#include <chrono>
+#include <iostream>
 #include "ArgParser.h"
 #include "defs.h"
 
@@ -58,27 +60,38 @@ HRESULT approx_all_masks(MaskService *mask_service, const std::string &method) {
 HRESULT handle_all_segments(const std::string &filename, const std::string &method) {
 	std::vector<std::vector<TGlucoseLevel>> segments;
 	if (load_segments(filename, segments) == S_FALSE) { return S_FALSE; }
-
-	for (size_t i = 0; i < SEGMENTS; i++) {
-		//printf("Getting all masks for segment %zd\n", i);
-		MaskService mask_service(&segments[SEGMENT][0], segments[SEGMENT].size());
-		//printf("Got all masks for segment %zd\n", i);
+	std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+	
+	for (size_t i = 0; i < segments.size(); i++) {
+		printf("Getting all masks for segment %zd\n", i);
+		MaskService mask_service(&segments[i][0], segments[i].size());
+		printf("Got all masks for segment %zd\n", i);
 		approx_all_masks(&mask_service, method);
-		//printf("Counted all masks for segment %zd\n", i);
+		printf("Counted all masks for segment %zd\n", i);
 	}
+	std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+	std::cout << "Total time = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << "ms" << std::endl;
 	return S_OK;
 }
 
-void print_help() {
-	printf("help\n");
+void print_help(char *name) {
+	std::cout << name <<" usage:\n" <<
+		"\t-h show help\n" <<
+		"\t-f FILE\n\t\tinput file location, by default: ./data/direcnet.sqlite\n" <<
+		"\t-m METHOD\n\t\tapproximation method, available values:\n" <<
+		"\t\t\t\'akima\' or 'a' for Akima spline (default)\n" <<
+		"\t\t\t\'catmull\' or 'cr' for CatmullRom spline\n" <<
+		"\t\t\t\'cubic\' or 'c' for Cubic spline.\n" <<
+		"Example:\n" <<
+		"\t" << name << " -f ../../data/input.sqlite -m a\n";
 }
 
 int main(int argc, char *argv[]) {
-	system("pause");
+	//system("pause");
 	std::string filename, method;
 	ArgParser parser(argc, argv);
 	if (parser.check_option("-h")) {
-		print_help();
+		print_help(argv[0]);
 		return 0;
 	}
 	filename = parser.get_option("-f");
