@@ -65,7 +65,7 @@ void AkimaApprox::approximate_gpu(floattype *ti) {
 		vec_lvls[i] = levels[i].level;
 	}
 
-	concurrency::extent<1> ext(size - 3);
+	concurrency::extent<1> ext(size - 5);
 	const concurrency::array_view<const floattype, 1> times(size, vec_times), lvls(size, vec_lvls);
 	concurrency::array_view<floattype, 1> p1s(size, p1), p2s(size, p2), p3s(size, p3);
 	p1s.discard_data();
@@ -107,7 +107,7 @@ void AkimaApprox::approximate_gpu(floattype *ti) {
 	*ti = get_t(m[0], m[1], m[2], m[3]);
 }
 
-//#define GPU
+#define GPU
 
 HRESULT AkimaApprox::Approximate(TApproximationParams * params) {
 	floattype ti, ti1, m_next;
