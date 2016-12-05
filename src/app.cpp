@@ -89,7 +89,7 @@ HRESULT handle_all_segments(const std::string &filename, std::string method, uns
 	Timer timer;
 	timer.start();
 	if (m != MASK_COUNT + 1) {
-		one_result(segments[0], method, m);
+		one_result(segments[1], method, m);
 	} else {
 		for (size_t i = 0; i < 1; i++) {
 			MaskService mask_service(segments[0]);
@@ -115,7 +115,6 @@ void print_help(char *name) {
 }
 
 int main(int argc, char *argv[]) {
-	system("pause");
 	std::string filename, method, mask;
 	unsigned int m = MASK_COUNT + 1;
 	ArgParser parser(argc, argv);
@@ -134,6 +133,6 @@ int main(int argc, char *argv[]) {
 	}
 	
 	handle_all_segments(filename, method, m);
-	system("pause");
+	//system("pause");
 	return 0;
 }

@@ -12,7 +12,6 @@
 
 class DBDataService : public DataService, public virtual CReferenced {
 	sqlite3 *db;
-	std::string path;
 	HRESULT get_glucose_levels(std::vector<TGlucoseLevel> &glucose_levels, std::string segmentid);
 public:
 	DBDataService(std::string path);
