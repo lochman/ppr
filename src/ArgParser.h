@@ -1,4 +1,5 @@
 #include <vector>
+#include "approx\src\CommonApprox.h"
 
 class ArgParser {
 	std::vector <std::string> args;
@@ -8,4 +9,5 @@ public:
 	bool check_option(const std::string &option);
 };
 
-bool str_compare(const std::string& str1, const std::string& str2);
+bool str_compare(const std::string &str1, const std::string &str2);
+HRESULT parse_method(const std::string &method, IGlucoseLevels *levels, CCommonApprox **approx);

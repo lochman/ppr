@@ -115,3 +115,5 @@ HRESULT CubicApprox::GetLevels(floattype desiredtime, floattype stepping, size_t
 	}
 	return S_OK;
 }
+
+std::string CubicApprox::get_name() { return std::string("Cubic spline"); }

@@ -13,6 +13,7 @@ public:
 	virtual HRESULT Approximate(TApproximationParams * params);
 	virtual HRESULT GetLevels(floattype desiredtime, floattype stepping, size_t count,
 		floattype *levels, size_t *filled, size_t derivationorder);
+	virtual std::string get_name();
 };
 
 #pragma warning( pop )

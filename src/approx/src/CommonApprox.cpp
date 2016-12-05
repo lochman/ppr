@@ -16,7 +16,7 @@ CCommonApprox::~CCommonApprox() {
 	if (mEnumeratedLevels != NULL) mEnumeratedLevels->Release();
 }
 
-HRESULT CCommonApprox::get_time_interval(TGlucoseLevel *levels, size_t size, floattype time, int *index) {
+HRESULT get_time_interval(TGlucoseLevel *levels, size_t size, floattype time, int *index) {
 	std::vector<TGlucoseLevel> vec(levels, levels + size);
 	std::vector<TGlucoseLevel>::const_reverse_iterator cri = std::lower_bound(vec.rbegin(),
 		vec.rend(), time, [&](const TGlucoseLevel &gl, const floattype &time) { return gl.datetime > time; });

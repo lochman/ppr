@@ -169,3 +169,5 @@ HRESULT AkimaApprox::GetLevels(floattype desiredtime, floattype stepping, size_t
 	}
 	return S_OK;
 }
+
+std::string AkimaApprox::get_name() { return std::string("Akima spline"); }

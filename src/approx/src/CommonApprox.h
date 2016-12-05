@@ -3,6 +3,7 @@
 #include "../../common/iface/ApproxIface.h"
 #include "..\..\common\rtl\hresult.h"
 #include "..\..\common\rtl\referencedImpl.h"
+#include <string>
 
 
 extern const floattype dfYOffset; //some interpolation requires negative values
@@ -21,7 +22,8 @@ public:
 	CCommonApprox(IGlucoseLevels *levels);
 	virtual ~CCommonApprox();
 	//dctor has to be virtual, even if it is empty, due to the inheritance by dominance	
-	HRESULT get_time_interval(TGlucoseLevel *levels, size_t size, floattype time, int *index);
 };
+
+HRESULT get_time_interval(TGlucoseLevel *levels, size_t size, floattype time, int *index);
 
 #pragma warning( pop )

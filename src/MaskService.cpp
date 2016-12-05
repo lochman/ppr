@@ -1,6 +1,7 @@
 #include "MaskService.h"
 #include <cstdint>
 #include <vector>
+#include "defs.h"
 
 const uint8_t bit1 = 0x80; // 1000 0000
 const uint8_t bit2 = 0x40; // 0100 0000
@@ -15,25 +16,29 @@ int is_bit_set(uint8_t mask, const uint8_t bit) {
 	return (mask & bit) == bit;
 }
 
-void fill_lvl_with_values(IGlucoseLevels *level, std::vector<TGlucoseLevel> &gl_levels) {
+HRESULT fill_lvl_with_values(IGlucoseLevels *level, std::vector<TGlucoseLevel> &gl_levels) {
 	TGlucoseLevel *lvl;
-	level->AddRef();
 	level->SetLevelsCount(gl_levels.size());
 	level->GetLevels(&lvl);
+	level->AddRef();
 	memcpy(lvl, gl_levels.data(), gl_levels.size() * sizeof TGlucoseLevel);
+	return S_OK;
 }
 
-MaskService::MaskService(TGlucoseLevel *levels, size_t const &size) : levels(levels), size(size) {
-	std::vector<TGlucoseLevel> gl_levels;
-	
-	for (int i = 255; i > 0; i--) {
+MaskService::MaskService(IGlucoseLevels *levels) {
+	TGlucoseLevel *gl_levels;
+	levels->GetLevelsCount(&segment_size);
+	levels->GetLevels(&gl_levels);
+	this->levels.resize(MASK_COUNT);
+
+	for (int i = MASK_COUNT; i > 0; i--) {
 		get_masked_values(gl_levels, i);
-		fill_lvl_with_values(&masks[i - 1], gl_levels);
-		gl_levels.clear();
 	}
+	levels->Release();
 }
 
-void MaskService::get_masked_values(std::vector<TGlucoseLevel> &glucose_levels, uint8_t mask) const {
+HRESULT MaskService::get_masked_values(const TGlucoseLevel *levels, uint8_t mask) {
+	std::vector<TGlucoseLevel> gl_levels;
 	int bits[8];
 	size_t i = 1, bit;
 	
@@ -46,51 +51,47 @@ void MaskService::get_masked_values(std::vector<TGlucoseLevel> &glucose_levels, 
 	bits[6] = is_bit_set(mask, bit7);
 	bits[7] = is_bit_set(mask, bit8);
 
-	glucose_levels.push_back(levels[0]); // always add first point
+	gl_levels.push_back(levels[0]); // always add first point
 
-	while (i < size - 1) {
+	while (i < segment_size - 1) {
 		for (bit = 0; bit < 8; bit++) {
-			if (bits[bit] && i < size - 1) {
-				glucose_levels.push_back(levels[i]);
+			if (bits[bit] && i < segment_size - 1) {
+				gl_levels.push_back(levels[i]);
 			}
 			i++;
-			if (i >= size - 1) { break; }
+			if (i >= segment_size - 1) { break; }
 		}
 	}
-	
-	glucose_levels.push_back(levels[size - 1]); // always add last point
-	//printf("Got mask with size %zd\n", glucose_levels.size());
+	gl_levels.push_back(levels[segment_size - 1]); // always add last point
+	this->levels[mask - 1] = new CGlucoseLevels();
+	fill_lvl_with_values(this->levels[mask - 1], gl_levels);
+	//printf("Got mask with size %zd\n", gl_levels.size());
+	return S_OK;
 }
 
-void MaskService::get_mask(IGlucoseLevels **levels, uint8_t mask) {
-	*levels = &masks[mask - 1];
-	/*
-	std::vector<TGlucoseLevel> gl_levels;
-	IGlucoseLevels *level = new CGlucoseLevels();
-	get_masked_values(gl_levels, mask);
-	fill_lvl_with_values(level, gl_levels);
-	*levels = level;
-	*/
-	/*
-	size_t m;
-	level->GetLevelsCount(&m);
-	TGlucoseLevel *lvl;
-	level->GetLevels(&lvl);
-
-	printf("getting mask %d size is %zd\n", mask, m);
-	printf("last is %f\n", lvl[m - 1].datetime);
-	printf("222 %f, %zd\n", gl_levels[gl_levels.size() - 1].datetime, gl_levels.size());
-	*/
+HRESULT MaskService::get_mask(IGlucoseLevels **levels, uint8_t mask) {
+	//printf("getting mask %d\n", mask);
+	*levels = this->levels[mask - 1];
+	return S_OK;
 }
 
-void MaskService::get_inverse_mask(IGlucoseLevels **levels, uint8_t mask) {
-	get_mask(levels, ~mask);
+HRESULT MaskService::get_inverse_mask(IGlucoseLevels **levels, uint8_t mask) {
+	//printf("getting inv mask of %d so %zd ", mask, ~mask);
+	if (mask == MASK_COUNT) { get_mask(levels, mask); }
+	else { get_mask(levels, ~mask); }
+	return S_OK;
 }
 
-void MaskService::get_levels(TGlucoseLevel **levels) const {
-	*levels = this->levels;
+MaskService::~MaskService() {
+	for (size_t i = 0; i < levels.size(); i++) { if (levels[i] != NULL) levels[i]->Release(); }
 }
 
-void MaskService::get_levels_size(size_t *size) const {
-	*size = this->size;
+HRESULT MaskService::get_segment_size(size_t *size) {
+	*size = this->segment_size;
+	return S_OK;
+}
+
+HRESULT MaskService::get_mask_count(size_t *size) {
+	*size = levels.size();
+	return S_OK;
 }

@@ -8,5 +8,5 @@
 class DataService {
 public:
 	virtual ~DataService() { };
-	virtual HRESULT get_segments(std::vector<std::vector<TGlucoseLevel>> &segments) = 0;
+	virtual HRESULT get_segments(std::vector<IGlucoseLevels *> &segments, std::vector<std::string> &segment_ids) = 0;
 };

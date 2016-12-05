@@ -9,16 +9,16 @@
 #pragma warning( disable : 4250 ) // C4250 - 'class1' : inherits 'class2::member' via dominance
 
 class MaskService : public virtual CReferenced {
-	CGlucoseLevels masks[255];
-	TGlucoseLevel *levels;
-	size_t size;
+	std::vector<IGlucoseLevels *> levels;
+	size_t segment_size;
+	HRESULT get_masked_values(const TGlucoseLevel *levels, uint8_t mask);
 public:
-	MaskService(TGlucoseLevel *levels, size_t const &size);
-	void get_masked_values(std::vector<TGlucoseLevel> &glucose_levels, uint8_t mask) const;
-	void get_mask(IGlucoseLevels **levels, uint8_t mask);
-	void get_inverse_mask(IGlucoseLevels **levels, uint8_t mask);
-	void get_levels(TGlucoseLevel **levels) const;
-	void get_levels_size(size_t *size) const;
+	MaskService(IGlucoseLevels *levels);
+	~MaskService();
+	HRESULT get_mask(IGlucoseLevels **levels, uint8_t mask);
+	HRESULT get_inverse_mask(IGlucoseLevels **levels, uint8_t mask);
+	HRESULT get_segment_size(size_t *size);
+	HRESULT get_mask_count(size_t *size);
 };
 
 #pragma warning( pop )

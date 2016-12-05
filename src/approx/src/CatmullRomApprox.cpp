@@ -141,3 +141,5 @@ HRESULT CatmullRomApprox::GetLevels(floattype desiredtime, floattype stepping, s
 	}
 	return S_OK;
 }
+
+std::string CatmullRomApprox::get_name() { return std::string("CatmullRom spline"); }
