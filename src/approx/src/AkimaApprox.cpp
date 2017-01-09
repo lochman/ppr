@@ -4,20 +4,11 @@
 #include <amp_math.h>
 
 floattype AkimaApprox::get_m(size_t i) {
-	//if (i < 0 || i > size - 2) { return S_FALSE; } //printf("m out of bounds: %d %d\n", i, size);
-	//*m = (levels[i + 1].level - levels[i].level) / (levels[i + 1].datetime - levels[i].datetime);
-	//return S_OK;
 	return (levels[i + 1].level - levels[i].level) / (levels[i + 1].datetime - levels[i].datetime);
 }
 
 floattype get_t(floattype m0, floattype m1, floattype m2, floattype m3) restrict(cpu) {
 	floattype numerator, denominator;
-	//if (m.size() != 4) { printf("sizenot4\n");return S_FALSE; }
-	//numerator = std::abs(m[3] - m[2]) * m[1] + std::abs(m[1] - m[0]) * m[2];
-	//denominator = std::abs(m[3] - m[2]) + std::abs(m[1] - m[0]);
-	//if (denominator == 0) printf("denomis 0\n");
-	//*t = (denominator == 0) ? 0.5 * (m[2] + m[1]) : numerator / denominator;
-	//return S_OK;
 	numerator = std::abs(m3 - m2) * m1 + std::abs(m1 - m0) * m2;
 	denominator = std::abs(m3 - m2) + std::abs(m1 - m0);
 	return (denominator == 0) ? 0.5 * (m2 + m1) : numerator / denominator;
@@ -46,7 +37,6 @@ HRESULT AkimaApprox::iterate(floattype &m_next, size_t i, floattype *ti) {
 	floattype yy, xx, ti1;
 	m.push_back(m_next);
 	m.pop_front();
-	//if (get_t(&ti1) == S_FALSE) { return S_FALSE; }
 	ti1 = get_t(m[0], m[1], m[2], m[3]);
 	yy = levels[i + 1].level - levels[i].level;
 	xx = levels[i + 1].datetime - levels[i].datetime;
@@ -117,24 +107,17 @@ HRESULT AkimaApprox::Approximate(TApproximationParams * params) {
 	p2.resize(size);
 	p3.resize(size);
 
-	//if (get_m(0, &m_next) == S_FALSE) { return S_FALSE; }
-	//m.push_back(m_next);
-	//if (get_m(1, &m_next) == S_FALSE) { return S_FALSE; }
-	//m.push_back(m_next);
-
 	m.push_back(get_m(0));
 	m.push_back(get_m(1));
 	m.push_front(2 * m[0] - m[1]); // m-1
 	m.push_front(2 * m[0] - m[1]); // m-2
 
-	//if (get_t(&ti) == S_FALSE) { return S_FALSE; }
 	ti = get_t(m[0], m[1], m[2], m[3]);
 
 #ifdef GPU	// GPU
 	approximate_gpu(&ti);
 #else // end GPU
 	for (size_t i = 0; i < size - 3; i++) {
-		//if (get_m(i + 2, &m_next) == S_FALSE) { return S_FALSE; } // swap lines?nop
 		m_next = get_m(i + 2);
 		this->iterate(m_next, i, &ti);
 	}
@@ -143,7 +126,6 @@ HRESULT AkimaApprox::Approximate(TApproximationParams * params) {
 	this->iterate(m_next, size - 3, &ti);
 	m_next = 2 * m[2] - m[3];
 	this->iterate(m_next, size - 2, &ti);
-	//concurrency::amp_uninitialize(); // release memory associated with amp
 	return S_OK;
 }
 

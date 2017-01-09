@@ -51,24 +51,6 @@ void print_graph(TGlucoseLevel *levels, const int mask, std::vector<floattype> &
 	}
 }
 
-void print_graph_new(TGlucoseLevel *levels, size_t &size, size_t &steps, const int mask, CCommonApprox *approx) {
-	std::vector<floattype> approx_lvls(size);
-	floattype from = levels[0].datetime,
-			  to = levels[size - 1].datetime,
-			  stepsize = (to - from) / (floattype)steps;
-	size_t filled, j = 0;
-	approx->GetLevels(from, stepsize, steps, &approx_lvls[0], &filled, 0);
-	
-	printf("time,reference\n");
-	for (size_t i = 0; i < size; i++) {
-		printf("%f,%f\n", levels[i].datetime, levels[i].level);
-	}
-	printf("time,\"mask %d\"\n", mask);
-	for (size_t i = 0; i < approx_lvls.size(); i++) {
-		printf("%f,%f\n", from + i * stepsize, approx_lvls[i]);
-	}
-}
-
 HRESULT Statistics::get_errors(TGlucoseLevel *levels, size_t size, const int mask, CCommonApprox *approx, boolean graph) {
 	std::vector<floattype> approx_lvls(size), abs_errors(size), rel_errors(size),
 			approx_lvls_dev(size), abs_errors_dev(size);
@@ -83,7 +65,6 @@ HRESULT Statistics::get_errors(TGlucoseLevel *levels, size_t size, const int mas
 		abs_errors_dev[i] = (std::abs((*ref_devs)[levels[i].datetime] - approx_lvls_dev[i]));
 	}
 	if (graph) { print_graph(levels, mask, approx_lvls); }
-	//print_graph_new(levels, size, steps, mask, approx);
 	output << "\tabs: ";
 	print_stats(abs_errors);
 	output << "\trel: ";
@@ -93,17 +74,22 @@ HRESULT Statistics::get_errors(TGlucoseLevel *levels, size_t size, const int mas
 	return S_OK;
 }
 
-Statistics::Statistics(MaskService *mask_service, std::map<floattype, floattype> *ref_devs, const int mask, CCommonApprox *approx, boolean graph) : ref_devs(ref_devs) {
+Statistics::Statistics(MaskService *mask_service, std::map<floattype, floattype> *ref_devs, boolean graph) :
+			ref_devs(ref_devs), mask_service(mask_service), graph(graph) {
 	IGlucoseLevels *glevels;
-	TGlucoseLevel *lvls;
-	size_t mask_count, lvl_count;
+	size_t mask_count;
 	mask_service->get_mask_count(&mask_count);
-	//printf("Mask count is %zd", mask_count);
 	mask_service->get_mask(&glevels, static_cast<unsigned int>(mask_count));
 	glevels->GetLevels(&ref_lvls);
 	glevels->GetLevelsCount(&size);
-	//printf("Mask size is %zd", size);
-	//mask_service->get_segment_size(&size);
+}
+
+HRESULT Statistics::get_stats(const int mask, CCommonApprox *approx) {
+	IGlucoseLevels *glevels;
+	TGlucoseLevel *lvls;
+	size_t lvl_count;
+	output.str(std::string());
+	output.clear();
 	output << "  mask 0x" << std::hex << mask << ":" << std::endl;
 	output << "    all:" << std::endl;
 	get_errors(ref_lvls, size, mask, approx, graph);
@@ -119,13 +105,13 @@ Statistics::Statistics(MaskService *mask_service, std::map<floattype, floattype>
 	glevels->GetLevels(&lvls);
 	glevels->GetLevelsCount(&lvl_count);
 	get_errors(lvls, lvl_count, mask, approx, false);
+	std::cout << this->get_output();
+	return S_OK;
 }
 
 HRESULT Statistics::print_stats(std::vector<floattype> &errors) {
 	if (errors.size() == 0) { return S_FALSE; }
 	floattype m = mean(errors);
-	//printf("mean,min,Q1,median,Q3,max,std_dev\n");
-	//printf("%f,%f,%f,%f,%f,%f,%f\n", m, min_error(errors), quantil(errors, 0.25), quantil(errors, 0.5),quantil(errors, 0.75), max_error(errors), std_deviation(errors, m));
 	output << m << "," << min_error(errors) << "," << quantil(errors, 0.25) << "," << quantil(errors, 0.5)
 		<< "," << quantil(errors, 0.75) << "," << max_error(errors) << "," << std_deviation(errors, m) << std::endl;
 	return S_OK;

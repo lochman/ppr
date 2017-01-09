@@ -14,7 +14,7 @@
 HRESULT load_segments(const std::string &filename, std::vector<IGlucoseLevels *> &segments, std::vector<std::string> &segment_ids) {
 	DBDataService dbservice(filename);
 	DataService *data_service = &dbservice;
-	if (data_service->get_segments(segments, segment_ids) != S_OK) {
+	if (data_service->load_segments(segments, segment_ids) != S_OK) {
 		std::cerr << "Failed to load segments from database." << std::endl;
 		return S_FALSE;
 	}
@@ -24,7 +24,6 @@ HRESULT load_segments(const std::string &filename, std::vector<IGlucoseLevels *>
 HRESULT approx_mask(MaskService *mask_service, const std::string &method, CCommonApprox **approx, int mask) {
 	IGlucoseLevels *levels;
 	mask_service->get_mask(&levels, mask);
-	//if (levels != NULL) levels->AddRef();
 	parse_method(method, levels, approx);
 	(*approx)->Approximate(nullptr);
 	return S_OK;
@@ -62,34 +61,33 @@ HRESULT approx_all_masks(MaskService *mask_service, const std::string &method) {
 #endif
 	get_ref_devs(mask_service, approxs[mask_count - 1], ref_devs);
 	std::cout << method << std::endl;
+	Statistics stats(mask_service, &ref_devs, false);
 	for (int i = static_cast<int>(mask_count); i > 0; i--) {
-		Statistics stats(mask_service, &ref_devs, i, approxs[i - 1], false);
-		std::cout << stats.get_output();
+		stats.get_stats(i, approxs[i - 1]);
 		approxs[i - 1]->Release();
 	}
 	return S_OK;
 }
 
-HRESULT single_result(IGlucoseLevels *lvls, std::string method, int mask) {
+HRESULT get_single_result(IGlucoseLevels *lvls, std::string method, int mask) {
 	std::map<floattype, floattype> ref_devs;
 	CCommonApprox *approx = NULL;
 	MaskService mask_service(lvls);
 	approx_mask(&mask_service, method, &approx, mask);
 	get_ref_devs(&mask_service, approx, ref_devs);
-	Statistics stats(&mask_service, &ref_devs, mask, approx, true);
+	Statistics stats(&mask_service, &ref_devs, true);
 	std::cout << method << std::endl;
-	std::cout << stats.get_output();
+	stats.get_stats(mask, approx);
 	approx->Release();
 	return S_OK;
 }
 
-HRESULT handle_all_segments(const std::string &filename, std::string method, std::string mask, std::string segment) {
+HRESULT compute(const std::string &filename, std::string method, std::string mask, std::string segment) {
 	std::vector<IGlucoseLevels *> segments;
 	std::vector<std::string> segment_ids;
 	if (load_segments(filename, segments, segment_ids) == S_FALSE) { return S_FALSE; }
 	Timer timer("Total time");
 	timer.start();
-	segment = "2";
 	if (!segment.empty() || !mask.empty()) {
 		if (mask.empty()) { mask = "255"; }
 		int seg_id;
@@ -98,12 +96,11 @@ HRESULT handle_all_segments(const std::string &filename, std::string method, std
 		else { 
 			seg_id = static_cast<int>(std::distance(segment_ids.begin(), it));
 		}
-		single_result(segments[seg_id], method, std::stol(mask, 0, 10));
+		get_single_result(segments[seg_id], method, std::stol(mask, 0, 10));
 	} else {
-		for (size_t i = 0; i < 1; i++) {
+		for (size_t i = 0; i < segments.size(); i++) {
 			MaskService mask_service(segments[i]);
 			approx_all_masks(&mask_service, method);
-			std::cout << "Counted all masks for segment " << i << std::endl;
 		}
 	}
 	for (size_t i = 0; i < segments.size(); i++) {
@@ -130,7 +127,6 @@ void print_help(char *name) {
 }
 
 int main(int argc, char *argv[]) {
-	system("pause");
 	std::string filename, method;
 	ArgParser parser(argc, argv);
 	if (parser.check_option("-h")) {
@@ -141,7 +137,7 @@ int main(int argc, char *argv[]) {
 	if (filename.empty()) { filename = DB_FILE; }
 	method = parser.get_option("-m");
 	
-	handle_all_segments(filename, method, parser.get_option("-mask"), parser.get_segment());
+	compute(filename, method, parser.get_option("-mask"), parser.get_segment());
 	system("pause");
 	return 0;
 }

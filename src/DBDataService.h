@@ -12,11 +12,11 @@
 
 class DBDataService : public DataService, public virtual CReferenced {
 	sqlite3 *db;
-	HRESULT get_glucose_levels(std::vector<TGlucoseLevel> &glucose_levels, std::string segmentid);
+	HRESULT load_glucose_levels(std::vector<TGlucoseLevel> &glucose_levels, std::string segmentid);
 public:
 	DBDataService(std::string path);
 	~DBDataService();
-	HRESULT get_segments(std::vector<IGlucoseLevels *> &segments, std::vector<std::string> &segment_ids);
+	HRESULT load_segments(std::vector<IGlucoseLevels *> &segments, std::vector<std::string> &segment_ids);
 };
 
 #pragma warning( pop )

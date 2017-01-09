@@ -64,18 +64,15 @@ HRESULT MaskService::get_masked_values(const TGlucoseLevel *levels, uint8_t mask
 	gl_levels.push_back(levels[segment_size - 1]); // always add last point
 	this->levels[mask - 1] = new CGlucoseLevels();
 	fill_lvl_with_values(this->levels[mask - 1], gl_levels);
-	//printf("Got mask with size %zd\n", gl_levels.size());
 	return S_OK;
 }
 
 HRESULT MaskService::get_mask(IGlucoseLevels **levels, uint8_t mask) {
-	//printf("getting mask %d\n", mask);
 	*levels = this->levels[mask - 1];
 	return S_OK;
 }
 
 HRESULT MaskService::get_inverse_mask(IGlucoseLevels **levels, uint8_t mask) {
-	//printf("getting inv mask of %d so %zd ", mask, ~mask);
 	if (mask == MASK_COUNT) { get_mask(levels, mask); }
 	else { get_mask(levels, ~mask); }
 	return S_OK;

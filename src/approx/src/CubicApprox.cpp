@@ -7,8 +7,6 @@
 #include <deque>
 
 HRESULT CubicApprox::Approximate(TApproximationParams *params) {
-	//printf("Starting Cubic with size %zd\n", size); n = size-1
-	
 	std::vector<floattype> h(size), a(size), l(size), u(size), z(size);
 	
 	b.resize(size);
