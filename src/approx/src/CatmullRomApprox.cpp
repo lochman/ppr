@@ -68,6 +68,7 @@ HRESULT CatmullRomApprox::iterate(const TGlucoseLevel &p0, const TGlucoseLevel &
 }
 
 HRESULT CatmullRomApprox::approximate_gpu() {
+	int size = static_cast<int>(this->size);
 	std::vector<floattype> vec_times(size), vec_lvls(size);
 	for (size_t i = 0; i < size; i++) {
 		vec_times[i] = levels[i].datetime;

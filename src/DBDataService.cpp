@@ -43,7 +43,7 @@ HRESULT DBDataService::get_segments(std::vector<IGlucoseLevels *> &segments, std
 	std::string query = "SELECT id FROM timesegment";
 	IGlucoseLevels *lvls;
 
-	if (sqlite3_prepare_v2(db, query.c_str(), query.length(), &res, &tail) != SQLITE_OK) {
+	if (sqlite3_prepare_v2(db, query.c_str(), static_cast<int>(query.length()), &res, &tail) != SQLITE_OK) {
 		std::cerr << sqlite3_errmsg(db) << std::endl;
 		return S_FALSE;
 	}
@@ -72,14 +72,14 @@ HRESULT DBDataService::get_glucose_levels(std::vector<TGlucoseLevel> &glucose_le
 	std::string query = "SELECT strftime('%s', measuredat), ist FROM measuredvalue WHERE segmentid = " + segmentid + " AND ist IS NOT NULL";
 	//std::vector<TGlucoseLevel> glucose_levels; //julianday(measuredat)
 
-	if (sqlite3_prepare_v2(db, query.c_str(), query.length(), &res, &tail) != SQLITE_OK) {
+	if (sqlite3_prepare_v2(db, query.c_str(), static_cast<int>(query.length()), &res, &tail) != SQLITE_OK) {
 		std::cerr << sqlite3_errmsg(db) << std::endl;
 		return S_FALSE;
 	}
 
 	while (sqlite3_step(res) == SQLITE_ROW) {
 		TGlucoseLevel g_level;
-		g_level.datetime = QDateTime2RatTime(std::stod(reinterpret_cast<const char*>(sqlite3_column_text(res, 0))));
+		g_level.datetime = QDateTime2RatTime(std::stoll(reinterpret_cast<const char*>(sqlite3_column_text(res, 0))));
 		//g_level.datetime = std::stod(reinterpret_cast<const char*>(sqlite3_column_text(res, 0)));
 		g_level.level = std::stod(reinterpret_cast<const char*>(sqlite3_column_text(res, 1)));
 		glucose_levels.push_back(g_level);

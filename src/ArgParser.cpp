@@ -8,6 +8,15 @@ ArgParser::ArgParser(int argc, char **argv) {
 	for (int i = 1; i < argc; ++i) { args.push_back(std::string(argv[i])); }
 }
 
+std::string ArgParser::get_segment() {
+	std::string segment;
+	segment = get_option("-segment");
+	if (segment.empty()) { 
+		segment = get_option("-s");
+	}
+	return segment;
+}
+
 std::string ArgParser::get_option(const std::string &option) {
 	std::vector<std::string>::const_iterator itr = std::find(args.begin(), args.end(), option);
 	if (itr != args.end() && ++itr != args.end()) { return *itr; }

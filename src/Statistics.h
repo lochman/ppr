@@ -27,7 +27,9 @@ public:
 
 class Timer : public virtual CReferenced {
 	std::chrono::steady_clock::time_point begin, end;
+	std::string message;
 public:
+	Timer(std::string message) : message(message) { }
 	HRESULT start();
 	HRESULT stop();
 };

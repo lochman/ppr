@@ -82,7 +82,7 @@ HRESULT CubicApprox::Approximate(TApproximationParams *params) {
 		z[i] = (a[i] - h[i - 1] * z[i - 1]) / l[i];
 	}
 
-	for (int i = size - 2; i > -1; i--) {
+	for (int i = static_cast<int>(size - 2); i > -1; i--) {
 		c[i] = z[i] - u[i] * c[i + 1];
 		b[i] = (levels[i + 1].level - levels[i].level) / h[i] - h[i] * ((c[i + 1] + 2 * c[i]) / 3);
 		d[i] = (c[i + 1] - c[i]) / (3 * h[i]);

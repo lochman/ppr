@@ -18,7 +18,7 @@ double quantil(std::vector<floattype> &errors, const floattype quantil) {
 	size_t size = errors.size(), q_ceil, q_floor;
 	floattype result;
 	if (size == 1) { return errors[0]; }
-	q_ceil = std::ceil(size * quantil); // quantil may be counted from 2 values, it depends on the vector size
+	q_ceil = static_cast<size_t>(std::ceil(size * quantil)); // quantil may be counted from 2 values, it depends on the vector size
 										// so it is better to get two nearby elements and count the average
 	q_ceil = std::min(q_ceil, errors.size() - 2); // prevent overflow
 	q_floor = std::max(q_ceil - 1, size_t(0));	// prevent underflow
@@ -98,9 +98,11 @@ Statistics::Statistics(MaskService *mask_service, std::map<floattype, floattype>
 	TGlucoseLevel *lvls;
 	size_t mask_count, lvl_count;
 	mask_service->get_mask_count(&mask_count);
-	mask_service->get_mask(&glevels, mask_count - 1);
+	//printf("Mask count is %zd", mask_count);
+	mask_service->get_mask(&glevels, static_cast<unsigned int>(mask_count));
 	glevels->GetLevels(&ref_lvls);
 	glevels->GetLevelsCount(&size);
+	//printf("Mask size is %zd", size);
 	//mask_service->get_segment_size(&size);
 	output << "  mask 0x" << std::hex << mask << ":" << std::endl;
 	output << "    all:" << std::endl;
@@ -140,6 +142,6 @@ HRESULT Timer::start() {
 
 HRESULT Timer::stop() {
 	end = std::chrono::steady_clock::now();
-	std::cout << "Total time = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << " microseconds" << std::endl;
+	std::cout << message << " = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << " microseconds" << std::endl;
 	return S_OK;
 }

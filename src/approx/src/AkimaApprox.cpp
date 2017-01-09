@@ -3,7 +3,7 @@
 #include <amp.h>
 #include <amp_math.h>
 
-floattype AkimaApprox::get_m(int i) {
+floattype AkimaApprox::get_m(size_t i) {
 	//if (i < 0 || i > size - 2) { return S_FALSE; } //printf("m out of bounds: %d %d\n", i, size);
 	//*m = (levels[i + 1].level - levels[i].level) / (levels[i + 1].datetime - levels[i].datetime);
 	//return S_OK;
@@ -42,7 +42,7 @@ floattype get_p3(floattype &xx, floattype &yy, floattype &ti, floattype &ti1) re
 	return (ti + ti1 - 2 * yy / xx) / concurrency::precise_math::pow(xx, 2);
 }
 
-HRESULT AkimaApprox::iterate(floattype &m_next, int i, floattype *ti) {
+HRESULT AkimaApprox::iterate(floattype &m_next, size_t i, floattype *ti) {
 	floattype yy, xx, ti1;
 	m.push_back(m_next);
 	m.pop_front();
@@ -59,6 +59,7 @@ HRESULT AkimaApprox::iterate(floattype &m_next, int i, floattype *ti) {
 }
 
 void AkimaApprox::approximate_gpu(floattype *ti) {
+	int size = static_cast<int>(this->size);
 	std::vector<floattype> vec_times(size), vec_lvls(size);
 	floattype m_next;
 	for (size_t i = 0; i < size; i++) {
@@ -109,7 +110,7 @@ void AkimaApprox::approximate_gpu(floattype *ti) {
 }
 
 HRESULT AkimaApprox::Approximate(TApproximationParams * params) {
-	floattype ti, ti1, m_next;
+	floattype ti, m_next;
 	if (size < 4) { return S_FALSE; }
 
 	p1.resize(size);
