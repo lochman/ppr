@@ -34,7 +34,6 @@ MaskService::MaskService(IGlucoseLevels *levels) {
 	for (int i = MASK_COUNT; i > 0; i--) {
 		get_masked_values(gl_levels, i);
 	}
-	levels->Release();
 }
 
 HRESULT MaskService::get_masked_values(const TGlucoseLevel *levels, uint8_t mask) {

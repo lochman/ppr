@@ -14,7 +14,6 @@
 HRESULT load_segments(const std::string &filename, std::vector<IGlucoseLevels *> &segments, std::vector<std::string> &segment_ids) {
 	DBDataService dbservice(filename);
 	DataService *data_service = &dbservice;
-
 	if (data_service->get_segments(segments, segment_ids) != S_OK) {
 		std::cerr << "Failed to load segments from database." << std::endl;
 		return S_FALSE;
@@ -66,12 +65,12 @@ HRESULT approx_all_masks(MaskService *mask_service, const std::string &method) {
 	for (int i = static_cast<int>(mask_count); i > 0; i--) {
 		Statistics stats(mask_service, &ref_devs, i, approxs[i - 1], false);
 		std::cout << stats.get_output();
-		delete approxs[i - 1];
+		approxs[i - 1]->Release();
 	}
 	return S_OK;
 }
 
-HRESULT one_result(IGlucoseLevels *lvls, std::string method, int mask) {
+HRESULT single_result(IGlucoseLevels *lvls, std::string method, int mask) {
 	std::map<floattype, floattype> ref_devs;
 	CCommonApprox *approx = NULL;
 	MaskService mask_service(lvls);
@@ -80,7 +79,7 @@ HRESULT one_result(IGlucoseLevels *lvls, std::string method, int mask) {
 	Statistics stats(&mask_service, &ref_devs, mask, approx, true);
 	std::cout << method << std::endl;
 	std::cout << stats.get_output();
-	delete approx;
+	approx->Release();
 	return S_OK;
 }
 
@@ -88,23 +87,27 @@ HRESULT handle_all_segments(const std::string &filename, std::string method, std
 	std::vector<IGlucoseLevels *> segments;
 	std::vector<std::string> segment_ids;
 	if (load_segments(filename, segments, segment_ids) == S_FALSE) { return S_FALSE; }
-	Timer timer;
+	Timer timer("Total time");
 	timer.start();
+	segment = "2";
 	if (!segment.empty() || !mask.empty()) {
-		if (mask.empty()) { mask = MASK_COUNT; }
+		if (mask.empty()) { mask = "255"; }
 		int seg_id;
 		auto it = std::find(segment_ids.begin(), segment_ids.end(), segment);
 		if (it == segment_ids.end()) { seg_id = 0; }
 		else { 
 			seg_id = static_cast<int>(std::distance(segment_ids.begin(), it));
 		}
-		one_result(segments[seg_id], method, std::stol(mask, 0, 10));
+		single_result(segments[seg_id], method, std::stol(mask, 0, 10));
 	} else {
-		for (size_t i = 0; i < segments.size(); i++) {
+		for (size_t i = 0; i < 1; i++) {
 			MaskService mask_service(segments[i]);
 			approx_all_masks(&mask_service, method);
 			std::cout << "Counted all masks for segment " << i << std::endl;
 		}
+	}
+	for (size_t i = 0; i < segments.size(); i++) {
+		segments[i]->Release();
 	}
 	timer.stop();
 	return S_OK;
@@ -127,6 +130,7 @@ void print_help(char *name) {
 }
 
 int main(int argc, char *argv[]) {
+	system("pause");
 	std::string filename, method;
 	ArgParser parser(argc, argv);
 	if (parser.check_option("-h")) {

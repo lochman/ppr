@@ -24,49 +24,39 @@ HRESULT CubicApprox::Approximate(TApproximationParams *params) {
 	h[0] = levels[1].datetime - levels[0].datetime;
 
 #ifdef GPU
-
+	h[1] = levels[2].datetime - levels[1].datetime;
+	a[0] = (levels[1].level - levels[0].level) / h[0];
+	a[1] = (levels[2].level - levels[1].level) / h[1];
+	u[1] = 2.0 * (h[0] + h[1]);
+	l[1] = 6.0 * (a[1] - a[0]);
+	for (int i = 2; i < size - 1; i++) {
+		h[i] = levels[i + 1].datetime - levels[i].datetime;
+		a[i] = (levels[i + 1].level - levels[i].level) / h[i];
+		u[i] = 2.0*(h[i] + h[i - 1]) - h[i - 1] * h[i - 1] / u[i - 1];
+		l[i] = 6.0*(a[i] - a[i - 1]) - h[i - 1] * l[i - 1] / u[i - 1];
+	}
+	z[size - 1] = 0;
+	for (int i = static_cast<int>(size - 2); i > 0; i--) {
+		z[i] = (l[i] - h[i] * z[i + 1]) / u[i];
+	}
 	std::vector<floattype> vec_times(size), vec_lvls(size);
-	std::deque<int> indices(size);
 
 	for (size_t i = 0; i < size; i++) {
 		vec_times[i] = levels[i].datetime;
 		vec_lvls[i] = levels[i].level;
-		indices[i] = i;
 	}
-	indices.pop_back(); // make sure to iterate on interval <1, size - 1)
-	indices.pop_front();
-
-	concurrency::extent<1> ext(&indices[0]);
-	concurrency::array_view<const floattype> times(ext, vec_times), lvls(ext, vec_lvls);
-	concurrency::array_view<floattype> hs(ext, h), as(ext, a), ls(ext, l), us(ext, u), zs(ext, z);
-	as.discard_data();
-	concurrency::parallel_for_each(ext, [=](concurrency::index<1> i) restrict(amp) {
-		hs[i] = times[i + 1] - times[i];
-		as[i] = (3 / hs[i]) * (lvls[i + 1] - lvls[i]) -
-				(3 / hs[i - 1]) * (lvls[i] - lvls[i - 1]);
-		ls[i] = 2 * (times[i + 1] - times[i - 1]) - hs[i - 1] * us[i - 1];
-		us[i] = hs[i] / ls[i];
-		zs[i] = (as[i] - hs[i - 1] * zs[i - 1]) / ls[i];
-	});
-	hs.synchronize();
-	as.synchronize();
-	ls.synchronize();
-	us.synchronize();
-	zs.synchronize();
-
-	indices.push_front(0); // add index zero
-	printf("%d, %d, %d\n", indices[0], indices[1], indices[2]);
-	std::reverse(indices.begin(), indices.end()); // invert indices order
-
-	concurrency::extent<1> ext1(&indices[0]);
-	concurrency::array_view<floattype> bs(ext1, b), cs(ext1, c), ds(ext1, d);
+	int s = static_cast<int>(size);
+	concurrency::extent<1> ext(s - 1);
+	concurrency::array_view<const floattype> times(s, vec_times), lvls(s, vec_lvls), zs(s, z);
+	concurrency::array_view<floattype> bs(ext, b), cs(ext, c), ds(ext, d);
 	bs.discard_data();
-	//cs.discard_data();
+	cs.discard_data();
 	ds.discard_data();
-	concurrency::parallel_for_each(ext1, [=](concurrency::index<1> i) restrict(amp) {
-		cs[i] = zs[i] - us[i] * cs[i + 1];
-		bs[i] = (lvls[i + 1] - lvls[i]) / hs[i] - hs[i] * ((cs[i + 1] + 2 * cs[i]) / 3);
-		ds[i] = (cs[i + 1] - cs[i]) / (3 * hs[i]);
+	concurrency::parallel_for_each(ext, [=](concurrency::index<1> i) restrict(amp) {
+		const floattype h = times[i + 1] - times[i];
+		bs[i] = (-h / 6) * zs[i + 1] - (h / 3) * zs[i] + (1 / h) * (lvls[i + 1] - lvls[i]);
+		cs[i] = zs[i] / 2;
+		ds[i] = (1 / (6 * h)) * (zs[i + 1] - zs[i]);
 	});
 	bs.synchronize();
 	cs.synchronize();

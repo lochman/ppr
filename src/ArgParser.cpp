@@ -45,5 +45,6 @@ HRESULT parse_method(const std::string &method, IGlucoseLevels *levels, CCommonA
 	} else {
 		*approx = new AkimaApprox(levels);
 	}
+	(*approx)->AddRef();
 	return S_OK;
 }
