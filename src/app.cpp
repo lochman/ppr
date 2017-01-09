@@ -11,6 +11,8 @@
 #include "ArgParser.h"
 #include "defs.h"
 
+long long parallel_time = 0;
+
 HRESULT load_segments(const std::string &filename, std::vector<IGlucoseLevels *> &segments, std::vector<std::string> &segment_ids) {
 	DBDataService dbservice(filename);
 	DataService *data_service = &dbservice;
@@ -50,6 +52,8 @@ HRESULT approx_all_masks(MaskService *mask_service, const std::string &method) {
 	mask_service->get_mask_count(&mask_count);
 	std::vector<CCommonApprox *> approxs(mask_count);
 	std::map<floattype, floattype> ref_devs;
+	Timer timer;
+	timer.start();
 #ifdef TBB
 	tbb::parallel_for(1, MASK_COUNT + 1, 1, [&, mask_service](int mask) {
 		approx_mask(mask_service, method, &approxs[mask - 1], mask);
@@ -59,6 +63,7 @@ HRESULT approx_all_masks(MaskService *mask_service, const std::string &method) {
 		approx_mask(mask_service, method, &approxs[i - 1], i);
 	}
 #endif
+	parallel_time += timer.stop();
 	get_ref_devs(mask_service, approxs[mask_count - 1], ref_devs);
 	std::cout << method << std::endl;
 	Statistics stats(mask_service, &ref_devs, false);
@@ -86,8 +91,6 @@ HRESULT compute(const std::string &filename, std::string method, std::string mas
 	std::vector<IGlucoseLevels *> segments;
 	std::vector<std::string> segment_ids;
 	if (load_segments(filename, segments, segment_ids) == S_FALSE) { return S_FALSE; }
-	Timer timer("Total time");
-	timer.start();
 	if (!segment.empty() || !mask.empty()) {
 		if (mask.empty()) { mask = "255"; }
 		int seg_id;
@@ -106,7 +109,6 @@ HRESULT compute(const std::string &filename, std::string method, std::string mas
 	for (size_t i = 0; i < segments.size(); i++) {
 		segments[i]->Release();
 	}
-	timer.stop();
 	return S_OK;
 }
 
@@ -128,7 +130,10 @@ void print_help(char *name) {
 
 int main(int argc, char *argv[]) {
 	std::string filename, method;
+	long long total_time;
 	ArgParser parser(argc, argv);
+	Timer timer;
+	timer.start();
 	if (parser.check_option("-h")) {
 		print_help(argv[0]);
 		return 0;
@@ -138,6 +143,10 @@ int main(int argc, char *argv[]) {
 	method = parser.get_option("-m");
 	
 	compute(filename, method, parser.get_option("-mask"), parser.get_segment());
+	total_time = timer.stop();
+	std::cout << "Serial time = " << total_time - parallel_time << std::endl;
+	std::cout << "Parallel time = " << parallel_time << std::endl;
+	std::cout << "Total time = " << total_time << " microseconds" << std::endl;
 	system("pause");
 	return 0;
 }

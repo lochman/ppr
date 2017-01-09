@@ -30,11 +30,10 @@ public:
 
 class Timer : public virtual CReferenced {
 	std::chrono::steady_clock::time_point begin, end;
-	std::string message;
 public:
-	Timer(std::string message) : message(message) { }
+	Timer() { };
 	HRESULT start();
-	HRESULT stop();
+	long long stop();
 };
 
 #pragma warning( pop )

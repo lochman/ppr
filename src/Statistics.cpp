@@ -126,8 +126,7 @@ HRESULT Timer::start() {
 	return S_OK;
 }
 
-HRESULT Timer::stop() {
+long long Timer::stop() {
 	end = std::chrono::steady_clock::now();
-	std::cout << message << " = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << " microseconds" << std::endl;
-	return S_OK;
+	return std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
 }
