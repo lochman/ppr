@@ -7,14 +7,6 @@
 #undef max	
 
 floattype min_error(std::vector<floattype> &errors) {
-	/*
-	std::cout << "Smallest of: ";
-	for (size_t i = 0; i < errors.size(); i++) {
-		std::cout << errors[i];
-	}
-	std::cout << "\n";
-	*/
-	std::cout << "First " << errors[0] << " Last " << errors[errors.size()-1] << "\n";
 	return *std::min_element(errors.begin(), errors.end());
 }
 
