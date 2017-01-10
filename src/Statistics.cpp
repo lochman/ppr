@@ -7,6 +7,14 @@
 #undef max	
 
 floattype min_error(std::vector<floattype> &errors) {
+	/*
+	std::cout << "Smallest of: ";
+	for (size_t i = 0; i < errors.size(); i++) {
+		std::cout << errors[i];
+	}
+	std::cout << "\n";
+	*/
+	std::cout << "First " << errors[0] << " Last " << errors[errors.size()-1] << "\n";
 	return *std::min_element(errors.begin(), errors.end());
 }
 
@@ -55,11 +63,12 @@ HRESULT Statistics::get_errors(TGlucoseLevel *levels, size_t size, const int mas
 	std::vector<floattype> approx_lvls(size), abs_errors(size), rel_errors(size),
 			approx_lvls_dev(size), abs_errors_dev(size);
 	size_t filled;
-
+	int index;
 	for (size_t i = 0; i < size; i++) {
 		approx->GetLevels(levels[i].datetime, 0, 1, &approx_lvls[i], &filled, 0);
-		abs_errors[i] = (std::abs(ref_lvls[i].level - approx_lvls[i]));
-		rel_errors[i] = (abs_errors[i] / ref_lvls[i].level);
+		get_time_interval(ref_lvls, this->size, levels[i].datetime, &index);
+		abs_errors[i] = (std::abs(ref_lvls[index].level - approx_lvls[i]));
+		rel_errors[i] = (abs_errors[i] / ref_lvls[index].level);
 		filled = 0;
 		approx->GetLevels(levels[i].datetime, 0, 1, &approx_lvls_dev[i], &filled, 1);
 		abs_errors_dev[i] = (std::abs((*ref_devs)[levels[i].datetime] - approx_lvls_dev[i]));
@@ -89,8 +98,6 @@ std::string Statistics::get_stats(const int mask, CCommonApprox *approx) {
 	TGlucoseLevel *lvls;
 	size_t lvl_count;
 	std::stringstream output;
-	//output.str(std::string());
-	//output.clear();
 	output << "\tmask 0x" << std::hex << mask << ":\n";
 	output << "\t\tall:\n";
 	get_errors(ref_lvls, size, mask, approx, graph, output);

@@ -62,12 +62,12 @@ HRESULT approx_all_masks(MaskService *mask_service, const std::string &method, i
 #ifndef TBB
 	std::vector<std::string> output(mask_count);
 #endif
-	Timer timer;
-	timer.start();
 	std::cout << "segmentId " << segment_id << std::endl;
 	approx_mask(mask_service, method, &approxs[mask_count - 1], static_cast<int>(mask_count));
 	get_ref_devs(mask_service, approxs[mask_count - 1], ref_devs);
 	Statistics stats(mask_service, &ref_devs, false);
+	Timer timer;
+	timer.start();
 #ifdef TBB
 	tbb::concurrent_vector<std::string> output(mask_count);
 	tbb::parallel_for(1, static_cast<int>(mask_count + 1), 1, [&, mask_service](int mask) {
@@ -92,11 +92,16 @@ HRESULT approx_all_masks(MaskService *mask_service, const std::string &method, i
 HRESULT get_single_result(IGlucoseLevels *lvls, std::string method, int mask) {
 	std::map<floattype, floattype> ref_devs;
 	CCommonApprox *approx = NULL;
+	size_t mask_count;
 	MaskService mask_service(lvls);
-	approx_mask(&mask_service, method, &approx, mask);
+	// Calculate reference approximation to get reference derivations
+	mask_service.get_mask_count(&mask_count);
+	approx_mask(&mask_service, method, &approx, static_cast<int>(mask_count));
 	get_ref_devs(&mask_service, approx, ref_devs);
+	// Calculate chosen approximation
+	approx_mask(&mask_service, method, &approx, mask);
 	Statistics stats(&mask_service, &ref_devs, true);
-	stats.get_stats(mask, approx);
+	std::cout << stats.get_stats(mask, approx);
 	approx->Release();
 	return S_OK;
 }
