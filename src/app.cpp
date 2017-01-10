@@ -11,7 +11,8 @@
 #include "ArgParser.h"
 #include "defs.h"
 
-long long parallel_time = 0;
+long long parallel_alg_time = 0,
+		  parallel_masks_time = 0;
 
 HRESULT load_segments(const std::string &filename, std::vector<IGlucoseLevels *> &segments, std::vector<std::string> &segment_ids) {
 	DBDataService dbservice(filename);
@@ -27,7 +28,10 @@ HRESULT approx_mask(MaskService *mask_service, const std::string &method, CCommo
 	IGlucoseLevels *levels;
 	mask_service->get_mask(&levels, mask);
 	parse_method(method, levels, approx);
+	Timer timer;
+	timer.start();
 	(*approx)->Approximate(nullptr);
+	parallel_alg_time += timer.stop();
 	return S_OK;
 }
 
@@ -63,7 +67,7 @@ HRESULT approx_all_masks(MaskService *mask_service, const std::string &method) {
 		approx_mask(mask_service, method, &approxs[i - 1], i);
 	}
 #endif
-	parallel_time += timer.stop();
+	parallel_masks_time += timer.stop();
 	get_ref_devs(mask_service, approxs[mask_count - 1], ref_devs);
 	std::cout << method << std::endl;
 	Statistics stats(mask_service, &ref_devs, false);
@@ -141,12 +145,18 @@ int main(int argc, char *argv[]) {
 	filename = parser.get_option("-f");
 	if (filename.empty()) { filename = DB_FILE; }
 	method = parser.get_option("-m");
-	
 	compute(filename, method, parser.get_option("-mask"), parser.get_segment());
 	total_time = timer.stop();
-	std::cout << "Serial time = " << total_time - parallel_time << std::endl;
-	std::cout << "Parallel time = " << parallel_time << std::endl;
+	if (parallel_masks_time != 0 && parallel_alg_time != 0) {
+#ifdef GPU
+		std::cout << "Serial time = " << total_time - parallel_alg_time << std::endl;
+		std::cout << "Parallel time = " << parallel_alg_time << std::endl;
+#else
+		std::cout << "Serial time = " << total_time - parallel_masks_time << std::endl;
+		std::cout << "Parallel time = " << parallel_masks_time << std::endl;
+#endif
+	}
 	std::cout << "Total time = " << total_time << " microseconds" << std::endl;
-	system("pause");
+	//system("pause");
 	return 0;
 }
