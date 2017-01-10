@@ -15,7 +15,7 @@ DBDataService::DBDataService(std::string path) : DataService(path) {
 	if (sqlite3_open(path.c_str(), &db)) {
 		std::cerr << "Can't open database: " << sqlite3_errmsg(db) << std::endl;
 	} else {
-		std::cerr << "Database " << path << " opened successfully" << std::endl;
+		std::cout << "Database " << path << " opened successfully" << std::endl;
 	}
 }
 
@@ -23,7 +23,7 @@ DBDataService::~DBDataService() {
 	if (sqlite3_close(db)) {
 		std::cerr << "Can't close database: " << sqlite3_errmsg(db) << std::endl;
 	} else {
-		std::cerr << "Database " << this->path << " closed successfully" << std::endl;
+		std::cout << "Database " << this->path << " closed successfully" << std::endl;
 	}
 }
 
