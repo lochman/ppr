@@ -54,29 +54,37 @@ HRESULT get_ref_devs(MaskService *mask_service, CCommonApprox *approx, std::map<
 	return S_OK;
 }
 
-HRESULT approx_all_masks(MaskService *mask_service, const std::string &method) {
+HRESULT approx_all_masks(MaskService *mask_service, const std::string &method, int segment_id) {
 	size_t mask_count;
 	mask_service->get_mask_count(&mask_count);
 	std::vector<CCommonApprox *> approxs(mask_count);
 	std::map<floattype, floattype> ref_devs;
+#ifndef TBB
+	std::vector<std::string> output(mask_count);
+#endif
 	Timer timer;
 	timer.start();
+	std::cout << "segmentId " << segment_id << std::endl;
+	approx_mask(mask_service, method, &approxs[mask_count - 1], static_cast<int>(mask_count));
+	get_ref_devs(mask_service, approxs[mask_count - 1], ref_devs);
+	Statistics stats(mask_service, &ref_devs, false);
 #ifdef TBB
-	tbb::parallel_for(1, MASK_COUNT + 1, 1, [&, mask_service](int mask) {
+	tbb::concurrent_vector<std::string> output(mask_count);
+	tbb::parallel_for(1, static_cast<int>(mask_count + 1), 1, [&, mask_service](int mask) {
 		approx_mask(mask_service, method, &approxs[mask - 1], mask);
+		output[mask - 1] = stats.get_stats(mask, approxs[mask - 1]);
+		approxs[mask - 1]->Release();
 	});
 #else
 	for (int i = static_cast<int>(mask_count); i > 0; i--) {
 		approx_mask(mask_service, method, &approxs[i - 1], i);
+		output[i - 1] = stats.get_stats(i, approxs[i - 1]);
+		approxs[i - 1]->Release();
 	}
 #endif
 	parallel_masks_time += timer.stop();
-	get_ref_devs(mask_service, approxs[mask_count - 1], ref_devs);
-	std::cout << method << std::endl;
-	Statistics stats(mask_service, &ref_devs, false);
-	for (int i = static_cast<int>(mask_count); i > 0; i--) {
-		stats.get_stats(i, approxs[i - 1]);
-		approxs[i - 1]->Release();
+	for (int i = static_cast<int>(output.size()); i > 0; i--) {
+		std::cout << output[i - 1];	
 	}
 	return S_OK;
 }
@@ -88,7 +96,6 @@ HRESULT get_single_result(IGlucoseLevels *lvls, std::string method, int mask) {
 	approx_mask(&mask_service, method, &approx, mask);
 	get_ref_devs(&mask_service, approx, ref_devs);
 	Statistics stats(&mask_service, &ref_devs, true);
-	std::cout << method << std::endl;
 	stats.get_stats(mask, approx);
 	approx->Release();
 	return S_OK;
@@ -98,6 +105,7 @@ HRESULT compute(const std::string &filename, std::string method, std::string mas
 	std::vector<IGlucoseLevels *> segments;
 	std::vector<std::string> segment_ids;
 	if (load_segments(filename, segments, segment_ids) == S_FALSE) { return S_FALSE; }
+	std::cout << "Method: "<< method << std::endl;
 	if (!segment.empty() || !mask.empty()) {
 		if (mask.empty()) { mask = "255"; }
 		int seg_id;
@@ -110,7 +118,7 @@ HRESULT compute(const std::string &filename, std::string method, std::string mas
 	} else {
 		for (size_t i = 0; i < segments.size(); i++) {
 			MaskService mask_service(segments[i]);
-			approx_all_masks(&mask_service, method);
+			approx_all_masks(&mask_service, method, static_cast<int>(i));
 		}
 	}
 	for (size_t i = 0; i < segments.size(); i++) {

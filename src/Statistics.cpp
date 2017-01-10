@@ -51,7 +51,7 @@ void print_graph(TGlucoseLevel *levels, const int mask, std::vector<floattype> &
 	}
 }
 
-HRESULT Statistics::get_errors(TGlucoseLevel *levels, size_t size, const int mask, CCommonApprox *approx, boolean graph) {
+HRESULT Statistics::get_errors(TGlucoseLevel *levels, size_t size, const int mask, CCommonApprox *approx, boolean graph, std::stringstream &output) {
 	std::vector<floattype> approx_lvls(size), abs_errors(size), rel_errors(size),
 			approx_lvls_dev(size), abs_errors_dev(size);
 	size_t filled;
@@ -65,12 +65,12 @@ HRESULT Statistics::get_errors(TGlucoseLevel *levels, size_t size, const int mas
 		abs_errors_dev[i] = (std::abs((*ref_devs)[levels[i].datetime] - approx_lvls_dev[i]));
 	}
 	if (graph) { print_graph(levels, mask, approx_lvls); }
-	output << "\tabs: ";
-	print_stats(abs_errors);
-	output << "\trel: ";
-	print_stats(rel_errors);
-	output << "\t1.der: ";
-	print_stats(abs_errors_dev);
+	output << "\t\t\tabs: ";
+	output << print_stats(abs_errors);
+	output << "\t\t\trel: ";
+	output << print_stats(rel_errors);
+	output << "\t\t\t1.der: ";
+	output << print_stats(abs_errors_dev);
 	return S_OK;
 }
 
@@ -84,40 +84,37 @@ Statistics::Statistics(MaskService *mask_service, std::map<floattype, floattype>
 	glevels->GetLevelsCount(&size);
 }
 
-HRESULT Statistics::get_stats(const int mask, CCommonApprox *approx) {
+std::string Statistics::get_stats(const int mask, CCommonApprox *approx) {
 	IGlucoseLevels *glevels;
 	TGlucoseLevel *lvls;
 	size_t lvl_count;
-	output.str(std::string());
-	output.clear();
-	output << "  mask 0x" << std::hex << mask << ":" << std::endl;
-	output << "    all:" << std::endl;
-	get_errors(ref_lvls, size, mask, approx, graph);
+	std::stringstream output;
+	//output.str(std::string());
+	//output.clear();
+	output << "\tmask 0x" << std::hex << mask << ":\n";
+	output << "\t\tall:\n";
+	get_errors(ref_lvls, size, mask, approx, graph, output);
 
-	output << "    bit 0:" << std::endl;
+	output << "\t\tbit 0:\n";
 	mask_service->get_inverse_mask(&glevels, mask);
 	glevels->GetLevels(&lvls);
 	glevels->GetLevelsCount(&lvl_count);
-	get_errors(lvls, lvl_count, mask, approx, false);
+	get_errors(lvls, lvl_count, mask, approx, false, output);
 
-	output << "    bit 1:" << std::endl;
+	output << "\t\tbit 1:\n";
 	mask_service->get_mask(&glevels, mask);
 	glevels->GetLevels(&lvls);
 	glevels->GetLevelsCount(&lvl_count);
-	get_errors(lvls, lvl_count, mask, approx, false);
-	std::cout << this->get_output();
-	return S_OK;
+	get_errors(lvls, lvl_count, mask, approx, false, output);
+	return output.str();
 }
 
-HRESULT Statistics::print_stats(std::vector<floattype> &errors) {
-	if (errors.size() == 0) { return S_FALSE; }
+std::string Statistics::print_stats(std::vector<floattype> &errors) {
+	std::stringstream output;
+	if (errors.size() == 0) { return ""; }
 	floattype m = mean(errors);
 	output << m << "," << min_error(errors) << "," << quantil(errors, 0.25) << "," << quantil(errors, 0.5)
-		<< "," << quantil(errors, 0.75) << "," << max_error(errors) << "," << std_deviation(errors, m) << std::endl;
-	return S_OK;
-}
-
-std::string Statistics::get_output() {
+		<< "," << quantil(errors, 0.75) << "," << max_error(errors) << "," << std_deviation(errors, m) << "\n";
 	return output.str();
 }
 
