@@ -8,6 +8,9 @@
 #include <iostream>
 #include <algorithm>
 #include <iterator>
+#ifdef TBB
+#include <amp.h>
+#endif
 #include "ArgParser.h"
 #include "defs.h"
 
@@ -136,6 +139,14 @@ int main(int argc, char *argv[]) {
 	std::string filename, method;
 	long long total_time;
 	ArgParser parser(argc, argv);
+#ifdef GPU
+	//C++ AMP init
+	Timer timer_amp;
+	timer_amp.start();
+	std::cout << "C++ AMP accelerator is " << concurrency::accelerator(concurrency::accelerator::default_accelerator).description << "\n";
+	std::cout << "C++ AMP initialized in " << timer_amp.stop() << " microseconds" << std::endl;
+#endif
+
 	Timer timer;
 	timer.start();
 	if (parser.check_option("-h")) {
